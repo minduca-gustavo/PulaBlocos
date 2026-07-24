@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Pula Blocos",
+  "version": "1.0.0",
+  "description": "Gerenciador de blocos de estudo — fetch, storage e navegação para o fluxo de questões.",
+
+  "permissions": [
+    "storage",
+    "tabs",
+    "webRequest"
+  ],
+
+  "host_permissions": [
+    "https://*.grancursosonline.com.br/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
+  },
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }, 
+
+  "content_scripts": [
+
+    {
+      "matches": [
+        "https://*.grancursosonline.com.br/*"
+      ],
+      "js": [
+        "background.js",
+        "tudo.js",
+        "teste.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
