@@ -168,21 +168,37 @@ if (typeof chrome !== 'undefined' && chrome.webRequest && chrome.webRequest.onSe
 // ── blocoFetch ────────────────────────────────────────────────
 //
 // Fetch padrão da extensão. Sempre manda cookies de sessão
-// (credentials: 'include') e, se houver um token capturado do
-// próprio site, manda o Authorization também — sem precisar passar
-// nada manualmente. Detecta JSON x texto sozinho.
+// (credentials: 'include') e, se a URL for do grancursosonline.com.br
+// e houver um token capturado, manda o Authorization também — sem
+// precisar passar nada manualmente. Para qualquer outro domínio (ex.:
+// GitHub), o token automático não é anexado, só o que vier em
+// opcoes.headers. Detecta JSON x texto sozinho.
 //
 // blocoFetch(url)
 // blocoFetch(url, { headers: { Authorization: 'Bearer ...' } })  // força um token específico
 // blocoFetch(url, { method: 'POST', body: JSON.stringify({...}) })
 
+function _ehDominioGranCursos(url) {
+    try {
+        return new URL(url).hostname.endsWith('grancursosonline.com.br')
+    } catch {
+        return false
+    }
+}
+
 async function blocoFetch(url, opcoes = {}) {
-    const { headers: headersExtras, ...resto } = opcoes
-    const tokenCapturado = await obterArmazenamento(CHAVE_TOKEN_GRAN)
+    const { headers: headersExtras, credentials: credenciaisForcadas, ...resto } = opcoes
+    const ehGranCursos = _ehDominioGranCursos(url)
+    const tokenCapturado = ehGranCursos ? await obterArmazenamento(CHAVE_TOKEN_GRAN) : null
 
     try {
         const resposta = await fetch(url, {
-            credentials: 'include',
+            // 'include' manda cookies de sessão — só faz sentido (e só funciona
+            // sem quebrar CORS) no próprio domínio do Gran Cursos. Em domínios
+            // com CORS aberto por wildcard (ex.: GitHub Pages), mandar
+            // credentials aqui faz o navegador bloquear a resposta, mesmo a
+            // URL sendo pública.
+            credentials: credenciaisForcadas ?? (ehGranCursos ? 'include' : 'omit'),
             headers: {
                 'Accept': 'application/json, text/plain, */*',
                 'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
