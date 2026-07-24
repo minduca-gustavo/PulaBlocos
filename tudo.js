@@ -73,12 +73,27 @@ async function atualizaBlocos() {
         let url = 'https://rota-api.grancursosonline.com.br/v3/materia/arvore?perPage=150&page=1&sort=indiceOrdenacao&pages=3&materia=0&comQuestoes=1&raiz%5B%5D=' + m?.id + '&_source%5B%5D=id&_source%5B%5D=nome&_source%5B%5D=assunto_raiz&_source%5B%5D=pai&_source%5B%5D=indice&_source%5B%5D=nivel&_source%5B%5D=filhos'
         let materia = await bFetch(url)
         materias[i].paginas = materia?.resultado?.corpo?.data?.pages
-        materias[i].assuntos = materia?.resultado?.corpo?.data?.rows
+        materias[i].assuntos = []
+        for (let m of materia?.resultado?.corpo?.data?.rows){
+            let obj = {
+                assunto_raiz: m?.assunto_raiz,
+                id: m?.id,
+                indice: m?.indice,
+                nome: m?.nome,
+            }
+            materias[i].assuntos.push(obj)    
+        }
         for (let j = 2; j <= materias[i].paginas; j++){
             let url = 'https://rota-api.grancursosonline.com.br/v3/materia/arvore?perPage=150&page=' + j + '&sort=indiceOrdenacao&pages=3&materia=0&comQuestoes=1&raiz%5B%5D=' + m?.id + '&_source%5B%5D=id&_source%5B%5D=nome&_source%5B%5D=assunto_raiz&_source%5B%5D=pai&_source%5B%5D=indice&_source%5B%5D=nivel&_source%5B%5D=filhos'
             let materia = await bFetch(url)
             for (let m of materia?.resultado?.corpo?.data?.rows){
-                materias[i].assuntos.push(m)    
+                let obj = {
+                    assunto_raiz: m?.assunto_raiz,
+                    id: m?.id,
+                    indice: m?.indice,
+                    nome: m?.nome,
+                }
+                materias[i].assuntos.push(obj)    
             }
             relatar(j, '', 'azul')
         }

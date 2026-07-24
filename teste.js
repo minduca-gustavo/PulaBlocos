@@ -1,6 +1,7 @@
 async function teste() {
     let teste = await obterArmazenamento('materias')
-    relatar('teste',teste, 'azul')
+    let materias = {materias: teste}
+    relatar('teste',materias, 'azul')
     let testarGit = await bFetch('https://minduca-gustavo.github.io/PulaBlocos/materias.json')
     relatar ('testarGit', testarGit, 'vermelho')
 }
