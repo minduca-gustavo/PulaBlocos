@@ -6,4 +6,4 @@ async function teste() {
     relatar ('testarGit', testarGit, 'vermelho')
 }
 
-teste()
+//teste()

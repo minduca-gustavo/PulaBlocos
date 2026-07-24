@@ -1,6 +1,32 @@
 PAGINAS = {
     questoes: 'questoes.grancursosonline.com.br',
-    assuntos: 'https://rota-api.grancursosonline.com.br/v1/elastic/assunto?perPage=500&page=1&_source[]=id&_source[]=nome&_source[]=maisBuscado&_source[]=maisBuscadoPosicao'
+    assuntos: 'https://rota-api.grancursosonline.com.br/v1/elastic/assunto?perPage=500&page=1&_source[]=id&_source[]=nome&_source[]=maisBuscado&_source[]=maisBuscadoPosicao',
+    tiposDeBotoes: {
+        proximaMateria: {
+            texto: 'Próxima Matéria',
+            materiaOuBloco: 'materia'
+        },
+        proximoBloco: {
+            texto: 'Próximo Bloco',
+            materiaOuBloco: 'bloco'
+        },
+        facilCertoErrado: {
+            url: 'https://questoes.grancursosonline.com.br/aluno/filtro/concursos?tiposProva=1&resolucao=NAORESOLVI&tipo=certo+e+errado&dificuldade=2%2C1&desatualizada=0&anulada=0',
+            texto: 'Fácil, certo e errado',
+        },
+        certoErrado: {
+            url: 'https://questoes.grancursosonline.com.br/aluno/filtro/concursos?tiposProva=1&resolucao=NAORESOLVI&tipo=certo+e+errado&desatualizada=0&anulada=0',
+            texto: 'Certo e errado',
+        },
+        naoResolvidas: {
+            url: 'https://questoes.grancursosonline.com.br/aluno/filtro/concursos?tiposProva=1&resolucao=NAORESOLVI&desatualizada=0&anulada=0',
+            texto: 'Padrão',
+        },
+        quatroBancas: {
+            url: 'https://questoes.grancursosonline.com.br/aluno/filtro/concursos?tiposProva=1&resolucao=NAORESOLVI&banca=27%2C92%2C102%2C252&desatualizada=0&anulada=0',
+            texto: 'Quatro Bancas',
+        },
+    }
 }
 
 //https://rota-api.grancursosonline.com.br/v3/materia/arvore?perPage=150&page=1&sort=indiceOrdenacao&pages=3&materia=0&comQuestoes=1&raiz%5B%5D=404067&_source%5B%5D=id&_source%5B%5D=nome&_source%5B%5D=assunto_raiz&_source%5B%5D=pai&_source%5B%5D=indice&_source%5B%5D=nivel&_source%5B%5D=filhos
@@ -105,4 +131,20 @@ async function atualizaBlocos() {
     await armazenar({materias: materias})
     relatar('materias', materias, 'verde')
     relatar(JSON.stringify(materiasNome),'', 'vermelho')
+}
+
+async function aguardarElemento(seletor = '', timeout = 0){
+	return new Promise(resolver => {
+		let el = document.querySelector(seletor)
+		if(el){ resolver(el); return }
+
+		let timer = null
+		let obs = new MutationObserver(() => {
+			let el2 = document.querySelector(seletor)
+			if(el2){ if(timer) clearTimeout(timer); obs.disconnect(); resolver(el2) }
+		})
+		obs.observe(document, { childList:true, subtree:true })
+		if(timeout > 0)
+			timer = setTimeout(() => { obs.disconnect(); resolver(null) }, timeout)
+	})
 }
