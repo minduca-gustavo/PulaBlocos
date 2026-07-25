@@ -7,4 +7,4 @@ async function teste() {
     await atualizaBlocos()
 }
 
-teste()
+//teste()

@@ -61,8 +61,9 @@ async function atualizaBlocos() {
     let dados = await bFetch(PAGINAS.assuntos)
     console.log(JSON.stringify(dados))
     let array = dados?.resultado?.corpo?.data?.rows
-    let materiasEstudadas = await buscarGit().then(d=> d?.resultado?.corpo?.materiasEstudadas?.materias)
-    //relatar('65: ', materiasEstudadasGit, 'azul')
+    let materiasEstudadasGit = await buscarGit()
+    let materiasEstudadas = materiasEstudadasGit?.resultado?.corpo?.materiasEstudadas?.materias
+    //relatar('65: ', materiasEstudadas, 'azul')
     //return
     //let materiasEstudadas = [
     //    'Administração Geral',
@@ -126,7 +127,7 @@ async function atualizaBlocos() {
         
     }
     let url = ''
-    await armazenar({materias: materias, materiasEstudadas: materiasEstudadas})
+    await armazenar({materias: materias, materiasEstudadas: materiasEstudadasGit?.resultado?.corpo?.materiasEstudadas})
     
 }
 

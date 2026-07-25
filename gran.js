@@ -20,7 +20,7 @@ async function iniciaGran() {
         let [funcao, parametros] = ['', {}]
         if (dados?.url){
             funcao = alteraTipo
-            parametros = [dados?.url, tipoId]
+            parametros = [dados?.url, nomeTipo, tipoId]
         } else if (dados?.materiaOuBloco) {
             funcao = alert
             parametros = [dados?.materiaOuBloco]
@@ -36,8 +36,16 @@ async function iniciaGran() {
         t++
     }
 
-    async function alteraTipo(){
+    async function alteraTipo(url, nomeTipo, tipoId){
         let materiasEstudadas = await obterArmazenamento('materiasEstudadas')
+        let materias = await obterArmazenamento('materias')
+        materiasEstudadas?.atual?.modo = nomeTipo
+        
+        relatar('materiasEstudadas', materiasEstudadas, 'azul')
+        relatar('materias', materias, 'azul')
+        relatar('url', url, 'azul')
+        relatar('tipoId', tipoId, 'azul')
+        //materiasEstudadas?.atual?.modo = 
         relatar('materiasEstudadas', materiasEstudadas, 'roxo')
 
     }
