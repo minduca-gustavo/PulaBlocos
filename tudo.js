@@ -61,7 +61,7 @@ async function atualizaBlocos() {
     let dados = await bFetch(PAGINAS.assuntos)
     console.log(JSON.stringify(dados))
     let array = dados?.resultado?.corpo?.data?.rows
-    let materiasEstudadas = await buscarGit().then(d=> d?.resultado?.corpo?.materiasEstudadas)
+    let materiasEstudadas = await buscarGit().then(d=> d?.resultado?.corpo?.materiasEstudadas?.materias)
     //relatar('65: ', materiasEstudadasGit, 'azul')
     //return
     //let materiasEstudadas = [

@@ -21,7 +21,8 @@
         ],
         "atual": {
             "materia": "Direito Constitucional",
-            "bloco": "6.4.2.10. Jurisprudência do STF e do STJ ou Jurisprudência dos Tribunais Superiores"
+            "bloco": "6.4.2.10. Jurisprudência do STF e do STJ ou Jurisprudência dos Tribunais Superiores",
+            "modo": "facilCertoErrado"
         }
     },
     "materias": [
