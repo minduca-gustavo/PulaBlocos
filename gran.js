@@ -19,8 +19,8 @@ async function iniciaGran() {
         let tipoId = 'pulaBlocos_' + nomeTipo
         let [funcao, parametros] = ['', {}]
         if (dados?.url){
-            funcao = navegar
-            parametros = [dados?.url, {novaAba: false}]
+            funcao = alteraTipo
+            parametros = [dados?.url, tipoId]
         } else if (dados?.materiaOuBloco) {
             funcao = alert
             parametros = [dados?.materiaOuBloco]
@@ -34,6 +34,12 @@ async function iniciaGran() {
         })
         botao.style.width = largura
         t++
+    }
+
+    async function alteraTipo(){
+        let materiasEstudadas = await obterArmazenamento('materiasEstudadas')
+        relatar('materiasEstudadas', materiasEstudadas, 'roxo')
+
     }
     //let botoes = [
     //    {
