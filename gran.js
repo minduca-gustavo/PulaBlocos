@@ -14,10 +14,13 @@ async function iniciaGran() {
     let t = 0
     let larguraCalculo = window.screen.availWidth / [Object.entries(PAGINAS.tiposDeBotoes)].length
     let largura = larguraCalculo > 185 ? '185px' : larguraCalculo + 'px'
+    let modo = await obterArmazenamento('materiasEstudadas').then(d=> d.atual?.modo)
+    relatar('modo', modo, 'roxo')
     for (let [nomeTipo, dados] of Object.entries(PAGINAS.tiposDeBotoes)) {
         //console.log(nomeTipo, dados)
         let tipoId = 'pulaBlocos_' + nomeTipo
         let [funcao, parametros] = ['', {}]
+        let cor = modo == nomeTipo ? '#d62839' : 'primaria'
         if (dados?.url){
             funcao = alteraTipo
             parametros = [dados?.url, nomeTipo, tipoId]
@@ -29,18 +32,35 @@ async function iniciaGran() {
             id: tipoId,
             texto: dados.texto,
             ancestral: '#pulaBlocos_div',
-            cor: 'primaria',
+            cor: dados?.url ? cor : '#386641',
             acao: () => funcao(...parametros),
         })
         botao.style.width = largura
         t++
     }
 
-    async function alteraTipo(url, nomeTipo, tipoId){
+    async function alteraTipo(url, nome, tipoId){
         let materiasEstudadas = await obterArmazenamento('materiasEstudadas')
         let materias = await obterArmazenamento('materias')
-        materiasEstudadas?.atual?.modo = nomeTipo
+        materiasEstudadas.atual.modo = nome
         
+        for (let [nomeTipo, dados] of Object.entries(PAGINAS.tiposDeBotoes)) {
+            
+            let tipoId = '#pulaBlocos_' + nomeTipo
+            let botao = document.querySelector(tipoId)
+            let corResolver = ''
+            if (dados?.url){
+                if (nomeTipo == nome ){
+                    corResolver = '#d62839'
+                } else {
+                    corResolver = 'primaria'
+                }
+                let { cor: corBase, corHover, texto: corTexto } = _ui_resolveCor(corResolver)
+                botao.style.background = corBase
+                _ui_hoverBotao(botao, corBase, corHover)
+            }
+        }
+        await armazenar({materiasEstudadas: materiasEstudadas})
         relatar('materiasEstudadas', materiasEstudadas, 'azul')
         relatar('materias', materias, 'azul')
         relatar('url', url, 'azul')
