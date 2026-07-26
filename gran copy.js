@@ -27,7 +27,7 @@ async function iniciaGran() {
             parametros = [dados?.url, nomeTipo, tipoId]
         } else if (dados?.materiaOuBloco) {
             funcao = blocos
-            parametros = [dados?.materiaOuBloco]
+            parametros = [dados?.url, dados?.materiaOuBloco]
         }
         let botao = criaBotao({
             id: tipoId,
@@ -40,41 +40,20 @@ async function iniciaGran() {
         t++
     }
 
-    async function blocos(materiaBlocoAmbos) {
-        let valores = {
-            materia: {
-                somaMateria: 1,
-                somaBloco: 0
-            },
-            bloco: {
-                somaMateria: 0,
-                somaBloco: 1
-            },
-            atuais: {
-                somaMateria: 0,
-                somaBloco: 0
-            }
-        }
-        let{idMateria, idBloco} = await defineIdBlocos(valores[materiaBlocoAmbos].somaMateria, valores[materiaBlocoAmbos].somaBloco)
-        relatar(idMateria)
-        relatar(idBloco)
-    }
-    
-    async function defineIdBlocos(somaMateria = 0, somaBloco = 0) {
+    async function blocos(blocoMateriaAmbos = '') {
         let materiasEstudadas = await obterArmazenamento('materiasEstudadas') || {}
         let materias = await obterArmazenamento('materias') || []
         let materiaAtualNome = materiasEstudadas?.atual?.materia || ''
         let materiaAtualIndex = materias.findIndex(d => d.nome == materiaAtualNome) || null
-        //let materiaAtualId = materias[materiaAtualIndex]?.id || ''
-        let indiceMateriaGarantido = materias?.length <= materiaAtualIndex + somaMateria ? 0 : materiaAtualIndex + somaMateria
-        let blocoAtualNome = materias[indiceMateriaGarantido]?.bloco || ''
-        let blocoAtualIndex = materias[indiceMateriaGarantido]?.assuntos.findIndex(d => d?.indice.replace(/^\d+\./, "") + ' ' + d?.nome == blocoAtualNome) || {}
-        let indiceBlocoGarantido = materias[indiceMateriaGarantido]?.assuntos?.length <= blocoAtualIndex + somaBloco ? 0 : blocoAtualIndex + somaBloco
-        //relatar(materiaAtualObject?.assuntos[246].indice.replace(/^\d+\./, "") + ' ' + materiaAtualObject?.assuntos[246].nome)
-        //let blocoAtualId = blocoAtualObject?.id || ''
-        relatar(indiceMateriaGarantido)
-        relatar(indiceBlocoGarantido)
-        return {idMateria: materias[indiceMateriaGarantido]?.id, idBloco: materias[indiceMateriaGarantido]?.assuntos[indiceBlocoGarantido]?.id}
+        let blocoAtualNome = materiasEstudadas?.atual?.bloco || ''
+        let blocoAtualIndex = materiaAtualObject?.assuntos.findIndex(d => d?.indice.replace(/^\d+\./, "") + ' ' + d?.nome == blocoAtualNome) || {}
+        let somaMateria = 0
+        let somaBloco = 0
+        if (blocoMateriaAmbos == 'bloco') somaBloco = 1
+        if (blocoMateriaAmbos == 'materia') somaMateria = 1
+        let idMateria = materias[materiaAtualIndex + somaMateria].id
+        let idBloco =   materiaAtualObject?.assuntos[blocoAtualIndex + somaBloco].id
+
     }
 
     async function alteraTipo(url, nome, tipoId){

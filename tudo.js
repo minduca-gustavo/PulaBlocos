@@ -2,6 +2,10 @@ PAGINAS = {
     questoes: 'questoes.grancursosonline.com.br',
     assuntos: 'https://rota-api.grancursosonline.com.br/v1/elastic/assunto?perPage=500&page=1&_source[]=id&_source[]=nome&_source[]=maisBuscado&_source[]=maisBuscadoPosicao',
     tiposDeBotoes: {
+        atual: {
+            texto: 'Matéria e Bloco atuais',
+            materiaOuBloco: 'atuais'
+        },
         proximaMateria: {
             texto: 'Próxima Matéria',
             materiaOuBloco: 'materia'
@@ -63,7 +67,7 @@ async function atualizaBlocos() {
     let array = dados?.resultado?.corpo?.data?.rows
     let materiasEstudadasGit = await buscarGit()
     let materiasEstudadas = materiasEstudadasGit?.resultado?.corpo?.materiasEstudadas?.materias
-    //relatar('65: ', materiasEstudadas, 'azul')
+    relatar('65: ', materiasEstudadas, 'azul')
     //return
     //let materiasEstudadas = [
     //    'Administração Geral',

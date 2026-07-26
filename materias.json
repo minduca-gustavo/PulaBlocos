@@ -16,12 +16,11 @@
             {"nome":"Auditoria", "acertos":"77", "total":"116"},
             {"nome":"Contabilidade Geral", "acertos":"187", "total":"289"},
             {"nome":"Economia e Finanças", "acertos":"17", "total":"28"},
-            {"nome":"Direito Constitucional", "acertos":"111", "total":"138"},
+            {"nome":"Direito Constitucional", "acertos":"111", "total":"138", "bloco": "6.4.2.10. Jurisprudência do STF e do STJ ou Jurisprudência dos Tribunais Superiores"},
             {"nome":"Comércio Internacional", "label":"Legislação Aduaneira", "acertos":"62", "total":"103"}
         ],
         "atual": {
             "materia": "Direito Constitucional",
-            "bloco": "6.4.2.10. Jurisprudência do STF e do STJ ou Jurisprudência dos Tribunais Superiores",
             "modo": "facilCertoErrado"
         }
     },
