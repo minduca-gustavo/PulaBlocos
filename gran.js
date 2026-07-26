@@ -65,15 +65,12 @@ async function iniciaGran() {
         let materias = await obterArmazenamento('materias') || []
         let materiaAtualNome = materiasEstudadas?.atual?.materia || ''
         let materiaAtualIndex = materias.findIndex(d => d.nome == materiaAtualNome) || null
-        //let materiaAtualId = materias[materiaAtualIndex]?.id || ''
+        if (materiaAtualIndex < 0) materiaAtualIndex = 0
         let indiceMateriaGarantido = materias?.length <= materiaAtualIndex + somaMateria ? 0 : materiaAtualIndex + somaMateria
-        let blocoAtualNome = materias[indiceMateriaGarantido]?.bloco || ''
-        let blocoAtualIndex = materias[indiceMateriaGarantido]?.assuntos.findIndex(d => d?.indice.replace(/^\d+\./, "") + ' ' + d?.nome == blocoAtualNome) || {}
+        let blocoAtualNome = (materiasEstudadas?.materias.find(d=> d?.nome == materiaAtualNome)).bloco || ''
+        let blocoAtualIndex = materias[indiceMateriaGarantido]?.assuntos.findIndex(d => d?.indice.replace(/^\d+\./, "") + ' ' + d?.nome == blocoAtualNome) || 0
+        if (blocoAtualIndex < 0) blocoAtualIndex = 0
         let indiceBlocoGarantido = materias[indiceMateriaGarantido]?.assuntos?.length <= blocoAtualIndex + somaBloco ? 0 : blocoAtualIndex + somaBloco
-        //relatar(materiaAtualObject?.assuntos[246].indice.replace(/^\d+\./, "") + ' ' + materiaAtualObject?.assuntos[246].nome)
-        //let blocoAtualId = blocoAtualObject?.id || ''
-        relatar(indiceMateriaGarantido)
-        relatar(indiceBlocoGarantido)
         return {idMateria: materias[indiceMateriaGarantido]?.id, idBloco: materias[indiceMateriaGarantido]?.assuntos[indiceBlocoGarantido]?.id}
     }
 
