@@ -30,6 +30,10 @@ PAGINAS = {
             url: 'https://questoes.grancursosonline.com.br/aluno/filtro/concursos?tiposProva=1&resolucao=NAORESOLVI&banca=27%2C92%2C102%2C252&desatualizada=0&anulada=0',
             texto: 'Quatro Bancas',
         },
+        gerenciar: {
+            texto: 'Gerenciar',
+            acao: 'gerenciar'
+        },
     }
 }
 

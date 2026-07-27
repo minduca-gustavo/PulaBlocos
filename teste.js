@@ -17,5 +17,5 @@ async function teste() {
     relatar ('testarGit', testarGit, 'vermelho')
     //await atualizaBlocos()
 }
-atualizaBlocos()
-teste()
+//atualizaBlocos()
+//teste()

@@ -119,10 +119,10 @@ function _ui_hoverBotao(btn, cor, corHover) {
 //
 // criaDiv({ id, ancestral, gap })
 
-function criaDiv({ id, ancestral, gap = '6px' }) {
+function criaDiv({ id, ancestral, gap = '6px', rowColumn = 'row' }) {
     const el = _ui_el('div', {
         display:       'flex',
-        flexDirection: 'row',
+        flexDirection: rowColumn,
         gap:           gap,
         marginBottom:  '8px',
     })

@@ -2,7 +2,7 @@ async function iniciaGran() {
     if (!location.origin.includes(PAGINAS.questoes)) return
     let cabecalho = await aguardarElemento('header')
     if (!cabecalho) return
-    let divRemove = document.querySelectorAll('#pulaBlocos_div')
+    let divRemove = document.querySelectorAll('[id*="pulaBlocos"]')
     for (d of divRemove){
         d.remove()
     }
@@ -17,6 +17,11 @@ async function iniciaGran() {
     let modoArmazenado = await obterArmazenamento('materiasEstudadas') || {}
     let modo = modoArmazenado.atual?.modo || 'facilCertoErrado'
     relatar('modo', modo, 'roxo')
+    let mapaFuncoes = {
+        gerenciar,
+        alteraTipo,
+        assuntos
+    }
     for (let [nomeTipo, dados] of Object.entries(PAGINAS.tiposDeBotoes)) {
         //console.log(nomeTipo, dados)
         let tipoId = 'pulaBlocos_' + nomeTipo
@@ -28,13 +33,16 @@ async function iniciaGran() {
         } else if (dados?.materiaOuAssunto) {
             funcao = assuntos
             parametros = [dados?.materiaOuAssunto]
+        } else if (dados?.acao) {
+            funcao = dados?.acao
+            parametros = []
         }
         let botao = criaBotao({
             id: tipoId,
             texto: dados.texto,
             ancestral: '#pulaBlocos_div',
             cor: dados?.url ? cor : '#386641',
-            acao: () => funcao(...parametros),
+            acao: () => mapaFuncoes[funcao](...parametros),
         })
         botao.style.width = largura
         t++
@@ -111,6 +119,99 @@ async function iniciaGran() {
         //materiasEstudadas?.atual?.modo = 
         relatar('materiasEstudadas', materiasEstudadas, 'roxo')
 
+    }
+
+    async function gerenciar() {
+        let divAnterior = document.querySelector('#pulaBlocos_divGerenciar')
+        if (divAnterior) {
+            divAnterior.remove()
+            return
+        }
+        let divGerenciar = criaDiv({
+            id: 'pulaBlocos_divGerenciar',
+            ancestral: '.questoes-navbar',
+            gap: '4px'
+        })
+        //  secoes a criar:
+        //  inputBlocos
+        //  inputExcluir
+        //  remove blocos e remove excluir
+        //  
+        //
+        //
+        let secoesGerenciar = [
+            {
+                tipo: 'criaTitulo',
+                id: 'tituloBlocos',
+                ancestral: 'pulaBlocos_divGerenciar',
+                texto: 'Cria blocos',
+                coluna: 1,
+            },
+            {
+                tipo: 'criaTexto',
+                id: 'tituloBlocos',
+                ancestral: 'pulaBlocos_divGerenciar',
+                texto: 'Copie e cole os assuntos para criar blocos.',
+                coluna: 1,
+            },
+            {
+                tipo: 'criaInput',
+                id: 'inputBlocos',
+                ancestral: 'pulaBlocos_divGerenciar',
+                placeholder: 'Cole aqui + enter ou clique no botão para montar blocos.',
+                acao: 'salvaBlocos',
+                parametros: [],
+                coluna: 1
+            },
+
+        ]
+        let mapaFuncoesGerenciar = {
+            criaTitulo,
+            criaTexto,
+            criaInput,
+            criaBotao,
+            criaBotaoComCheckbox,
+            salvaBlocos,
+            alert,
+        }
+
+        let colunas = Math.max(...secoesGerenciar.map(d=> d.coluna))
+        let larguraCalculo = window.screen.availWidth / colunas
+        let largura = larguraCalculo > 600 ? '600px' : larguraCalculo + 'px'
+        //let colunasNumero = Math.max(colunas)
+        relatar ('colunas', colunas)
+        for (let i = 1; i <= colunas; i++){
+            let coluna = criaDiv({
+                id:'pulaBlocos_gerenciar_coluna' + i,
+                ancestral:'pulaBlocos_divGerenciar',
+                gap: '4px',
+                rowColumn: 'column'
+            })
+            coluna.style.width = largura
+            for (let m of secoesGerenciar){
+                if (m?.coluna == i){
+                    let acao = m?.acao
+                    let parametros = m?.parametros || []
+                    let funcao = m?.tipo
+                    let elemento = mapaFuncoesGerenciar[funcao]({
+                        texto: m?.texto,
+                        id: m?.id,
+                        ancestral: 'pulaBlocos_gerenciar_coluna' + i,
+                        acao: () => mapaFuncoesGerenciar[acao](...parametros)
+                    })
+                }
+            }
+        }
+
+        let inputBlocos = criaInput({
+            id: 'pulaBlocos_inputBlocos',
+            ancestral: 'pulaBlocos_divGerenciar',
+            placeholder: 'Selecione os assuntos, e cole aqui para montar blocos.',
+            acao: () => alert('salvaBlocos')
+        })
+        async function salvaBlocos(params) {
+            
+        }
     }
     //let botoes = [
     //    {
