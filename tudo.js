@@ -4,15 +4,15 @@ PAGINAS = {
     tiposDeBotoes: {
         atual: {
             texto: 'Matéria e Bloco atuais',
-            materiaOuBloco: 'atuais'
+            materiaOuAssunto: 'atuais'
         },
         proximaMateria: {
             texto: 'Próxima Matéria',
-            materiaOuBloco: 'materia'
+            materiaOuAssunto: 'materia'
         },
         proximoBloco: {
             texto: 'Próximo Bloco',
-            materiaOuBloco: 'bloco'
+            materiaOuAssunto: 'bloco'
         },
         facilCertoErrado: {
             url: 'https://questoes.grancursosonline.com.br/aluno/filtro/concursos?tiposProva=1&resolucao=NAORESOLVI&tipo=certo+e+errado&dificuldade=2%2C1&desatualizada=0&anulada=0',

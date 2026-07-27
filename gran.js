@@ -25,9 +25,9 @@ async function iniciaGran() {
         if (dados?.url){
             funcao = alteraTipo
             parametros = [dados?.url, nomeTipo, tipoId]
-        } else if (dados?.materiaOuBloco) {
-            funcao = blocos
-            parametros = [dados?.materiaOuBloco]
+        } else if (dados?.materiaOuAssunto) {
+            funcao = assuntos
+            parametros = [dados?.materiaOuAssunto]
         }
         let botao = criaBotao({
             id: tipoId,
@@ -40,45 +40,50 @@ async function iniciaGran() {
         t++
     }
 
-    async function blocos(materiaBlocoAmbos) {
+    async function assuntos(materiaAssuntoAtuais) {
         let valores = {
             materia: {
                 somaMateria: 1,
-                somaBloco: 0
+                somaAssunto: 0
             },
-            bloco: {
+            assunto: {
                 somaMateria: 0,
-                somaBloco: 1
+                somaAssunto: 1
             },
             atuais: {
                 somaMateria: 0,
-                somaBloco: 0
+                somaAssunto: 0
             }
         }
-        let{idMateria, idBloco} = await defineIdBlocos(valores[materiaBlocoAmbos].somaMateria, valores[materiaBlocoAmbos].somaBloco)
+        let{idMateria, idAssunto} = await defineIdAssuntos(valores[materiaAssuntoAtuais].somaMateria, valores[materiaAssuntoAtuais].somaAssunto)
+        let blocoArray = []
+        blocoArray.push(idAssunto)
         relatar(idMateria)
-        relatar(idBloco)
+        relatar(idAssunto)
+        relatar('blocoArray', blocoArray, 'roxo')
+        return {idMateria: idMateria, blocoArray: blocoArray}
     }
     
-    async function defineIdBlocos(somaMateria = 0, somaBloco = 0) {
+    async function defineIdAssuntos(somaMateria = 0, somaAssunto = 0) {
         let materiasEstudadas = await obterArmazenamento('materiasEstudadas') || {}
         let materias = await obterArmazenamento('materias') || []
         let materiaAtualNome = materiasEstudadas?.atual?.materia || ''
         let materiaAtualIndex = materias.findIndex(d => d.nome == materiaAtualNome) || null
         if (materiaAtualIndex < 0) materiaAtualIndex = 0
         let indiceMateriaGarantido = materias?.length <= materiaAtualIndex + somaMateria ? 0 : materiaAtualIndex + somaMateria
-        let blocoAtualNome = (materiasEstudadas?.materias.find(d=> d?.nome == materiaAtualNome)).bloco || ''
-        let blocoAtualIndex = materias[indiceMateriaGarantido]?.assuntos.findIndex(d => d?.indice.replace(/^\d+\./, "") + ' ' + d?.nome == blocoAtualNome) || 0
-        if (blocoAtualIndex < 0) blocoAtualIndex = 0
-        let indiceBlocoGarantido = materias[indiceMateriaGarantido]?.assuntos?.length <= blocoAtualIndex + somaBloco ? 0 : blocoAtualIndex + somaBloco
-        return {idMateria: materias[indiceMateriaGarantido]?.id, idBloco: materias[indiceMateriaGarantido]?.assuntos[indiceBlocoGarantido]?.id}
+        let assuntoAtualNome = (materiasEstudadas?.materias.find(d=> d?.nome == materiaAtualNome)).assunto || ''
+        let assuntoAtualIndex = materias[indiceMateriaGarantido]?.assuntos.findIndex(d => d?.indice.replace(/^\d+\./, "") + ' ' + d?.nome == assuntoAtualNome) || 0
+        if (assuntoAtualIndex < 0) assuntoAtualIndex = 0
+        let indiceAssuntoGarantido = materias[indiceMateriaGarantido]?.assuntos?.length <= assuntoAtualIndex + somaAssunto ? 0 : assuntoAtualIndex + somaAssunto
+        return {idMateria: materias[indiceMateriaGarantido]?.id, idAssunto: materias[indiceMateriaGarantido]?.assuntos[indiceAssuntoGarantido]?.id}
     }
 
     async function alteraTipo(url, nome, tipoId){
         let materiasEstudadas = await obterArmazenamento('materiasEstudadas')
         let materias = await obterArmazenamento('materias')
         materiasEstudadas.atual.modo = nome
-        
+        let {idMateria, blocoArray} = await assuntos('atuais')
+        relatar ('85: ', JSON.stringify(blocoArray), 'verde')
         for (let [nomeTipo, dados] of Object.entries(PAGINAS.tiposDeBotoes)) {
             
             let tipoId = '#pulaBlocos_' + nomeTipo
@@ -96,9 +101,12 @@ async function iniciaGran() {
             }
         }
         await armazenar({materiasEstudadas: materiasEstudadas})
+        let urlNavegar = url + '&assunto=' + idMateria + '%2C' + blocoArray.join('%2C')
+        await navegar(urlNavegar, {novaAba: false})
         relatar('materiasEstudadas', materiasEstudadas, 'azul')
         relatar('materias', materias, 'azul')
         relatar('url', url, 'azul')
+        relatar('urlNavegar', urlNavegar, 'azul')
         relatar('tipoId', tipoId, 'azul')
         //materiasEstudadas?.atual?.modo = 
         relatar('materiasEstudadas', materiasEstudadas, 'roxo')
