@@ -432,7 +432,7 @@ function criaInput({ id, ancestral, placeholder = '', valorInicial = '', acao })
         width: '100%', boxSizing: 'border-box', padding: '7px 10px',
         border: '1px solid ' + UI_CORES.borda, borderRadius: '6px',
         fontSize: '12px', fontFamily: UI_FONTE, color: UI_CORES.texto,
-        outline: 'none',
+        outline: 'none', whiteSpace: 'nowrap', height: 'fit-content'
     })
     el.id = id
     el.type = 'text'

@@ -156,12 +156,60 @@ async function iniciaGran() {
             },
             {
                 tipo: 'criaInput',
-                id: 'inputBlocos',
+                id: 'inputSalvar',
                 ancestral: 'pulaBlocos_divGerenciar',
                 placeholder: 'Cole aqui + enter ou clique no botão para montar blocos.',
-                acao: 'salvaBlocos',
-                parametros: [],
+                acao: 'salvarExcluir',
+                parametros: ['salvar', '#pulaBlocos_gerenciar_inputSalvar'],
                 coluna: 1
+            },
+            {
+                tipo: 'criaBotao',
+                id: 'inputBotao',
+                ancestral: 'pulaBlocos_divGerenciar',
+                acao: 'salvarExcluir',
+                texto: 'Salvar como bloco',
+                parametros: ['salvar', '#pulaBlocos_gerenciar_inputSalvar'],
+                coluna: 1
+            },
+            {
+                tipo: 'criaTitulo',
+                id: 'tituloBlocos',
+                ancestral: 'pulaBlocos_divGerenciar',
+                texto: 'Exclui assuntos',
+                coluna: 2,
+            },
+            {
+                tipo: 'criaTexto',
+                id: 'tituloBlocos',
+                ancestral: 'pulaBlocos_divGerenciar',
+                texto: 'Copie e cole os assuntos que devem ser excluídos, ou seja, não "rodarão".',
+                coluna: 2,
+            },
+            {
+                tipo: 'criaInput',
+                id: 'inputExcluir',
+                ancestral: 'pulaBlocos_divGerenciar',
+                placeholder: 'Cole aqui + enter ou clique no botão para excluir assuntos.',
+                acao: 'salvarExcluir',
+                parametros: ['excluir', '#pulaBlocos_gerenciar_inputExcluir'],
+                coluna: 2
+            },
+            {
+                tipo: 'criaBotao',
+                id: 'inputBotao',
+                ancestral: 'pulaBlocos_divGerenciar',
+                acao: 'salvarExcluir',
+                texto: 'Excluir assuntos',
+                parametros: ['excluir', '#pulaBlocos_gerenciar_inputExcluir'],
+                coluna: 2
+            },
+            {
+                tipo: 'criaTitulo',
+                id: 'tituloBlocos',
+                ancestral: 'pulaBlocos_divGerenciar',
+                texto: 'Apagar Filtros',
+                coluna: 3,
             },
 
         ]
@@ -171,7 +219,7 @@ async function iniciaGran() {
             criaInput,
             criaBotao,
             criaBotaoComCheckbox,
-            salvaBlocos,
+            salvarExcluir,
             alert,
         }
 
@@ -195,21 +243,19 @@ async function iniciaGran() {
                     let funcao = m?.tipo
                     let elemento = mapaFuncoesGerenciar[funcao]({
                         texto: m?.texto,
-                        id: m?.id,
+                        id: 'pulaBlocos_gerenciar_' + m?.id,
                         ancestral: 'pulaBlocos_gerenciar_coluna' + i,
+                        placeholder: m?.placeholder,
                         acao: () => mapaFuncoesGerenciar[acao](...parametros)
                     })
                 }
             }
         }
 
-        let inputBlocos = criaInput({
-            id: 'pulaBlocos_inputBlocos',
-            ancestral: 'pulaBlocos_divGerenciar',
-            placeholder: 'Selecione os assuntos, e cole aqui para montar blocos.',
-            acao: () => alert('salvaBlocos')
-        })
-        async function salvaBlocos(params) {
+        
+        async function salvarExcluir(acao, input) {
+            let elemento = document.querySelector(input)
+            let resultado = elemento.value
             
         }
     }
