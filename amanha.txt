@@ -1,1 +1,3 @@
 Estou transformando os assuntos em ARRAY.
+Antes disso, precisei criar o bloco de gerenciamento, ou seja, o que vai salvar os blocos.
+Acabei de iniciar a função que vai analisar os blocos e salvá-los.
