@@ -18,6 +18,7 @@ async function atualiza() {
         {"nome":"Direito Constitucional", "acertos":"111", "total":"138", "assunto": "6.4.2.10. Jurisprudência do STF e do STJ ou Jurisprudência dos Tribunais Superiores"},
     ]
     let i = 0
+    materias.atual = 'Direito Constitucional'
     for (k of materias.materias){
         let nome = normalizar(k.nome)
         let encontrar = array.find(j=> normalizar(j.nome) == nome)
@@ -34,6 +35,7 @@ async function atualiza() {
         i++
     }
     relatar('3t: ', materias, 'roxo')
+    await armazenar({pulaBlocos: materias})
 }
 
 async function teste() {

@@ -6,6 +6,7 @@ async function iniciaGran() {
     for (d of divRemove){
         d.remove()
     }
+    
     let div = criaDiv({
         id: 'pulaBlocos_div',
         ancestral: '.questoes-navbar',
@@ -47,6 +48,7 @@ async function iniciaGran() {
         botao.style.maxWidth = '185px'
         t++
     }
+    
 
     async function assuntos(materiaAssuntoAtuais) {
         let valores = {
@@ -122,9 +124,9 @@ async function iniciaGran() {
     }
 
     async function gerenciar() {
-        let divAnterior = document.querySelector('#pulaBlocos_divGerenciar')
-        if (divAnterior) {
-            divAnterior.remove()
+        let divAnterior = [...document.querySelectorAll('[id*=pulaBlocos_divGerenciar]')]
+        if (divAnterior.length>0) {
+            divAnterior.map(d=> d.remove())
             return
         }
         let divGerenciar = criaDiv({
@@ -170,87 +172,90 @@ async function iniciaGran() {
                 peso:   2
             },
         ]
+        let token = await obterArmazenamento('blocosTokenGranAuthorization') || []
+        relatar('174g: ', token)
+        let tokenObjeto = {
+            id: 'atualizaMaterias',
+            acao: 'atualizaMaterias',
+            texto: 'Atualiza matérias'
+        }
+        if (token.length == 0){
+            tokenObjeto.id = 'atualizaPagina'
+            tokenObjeto.acao = 'atualizaPagina'
+            tokenObjeto.texto = 'Atualiza página'
+        }
+        relatar('174g: ', tokenObjeto)
         let elementosGerenciar = [
             //{
             //    tipo: 'criaTitulo',
             //    id: 'tituloBlocos',
-            //    ancestral: 'pulaBlocos_divGerenciar',
             //    texto: 'Cria blocos',
             //    coluna: 'input',
             //},
             //{
             //    tipo: 'criaTexto',
             //    id: 'tituloBlocos',
-            //    ancestral: 'pulaBlocos_divGerenciar',
             //    texto: 'Copie e cole os assuntos para criar blocos.',
             //    coluna: 'input',
             //},
             {
                 tipo: 'criaInput',
                 id: 'inputSalvar',
-                ancestral: 'pulaBlocos_divGerenciar',
                 placeholder: 'Cole aqui + enter ou clique no botão para montar blocos.',
                 acao: 'salvarExcluir',
-                parametros: ['salvar', '#pulaBlocos_gerenciar_inputSalvar'],
+                parametros: ['salvar', '#pulaBlocos_divGerenciar_inputSalvar'],
                 coluna: 'input'
             },
             {
                 tipo: 'criaBotao',
-                id: 'atualizaMaterias',
-                ancestral: 'pulaBlocos_divGerenciar',
-                acao: 'atualizaMaterias',
-                texto: 'Atualiza matérias',
-                parametros: ['#pulaBlocos_gerenciar_inputSalvar'],
+                id: tokenObjeto.id,
+                acao: tokenObjeto.acao,
+                texto: tokenObjeto.texto,
+                parametros: ['#pulaBlocos_divGerenciar_inputSalvar'],
                 coluna: 'botoes'
             },
             {
                 tipo: 'criaBotao',
                 id: 'salvaBloco',
-                ancestral: 'pulaBlocos_divGerenciar',
                 acao: 'salvarExcluir',
                 texto: 'Salvar como bloco',
-                parametros: ['salvar', '#pulaBlocos_gerenciar_inputSalvar'],
+                parametros: ['blocos', '#pulaBlocos_divGerenciar_inputSalvar'],
                 coluna: 'botoes'
             },
             {
                 tipo: 'criaBotao',
                 id: 'excluiAssunto',
-                ancestral: 'pulaBlocos_divGerenciar',
                 acao: 'salvarExcluir',
                 texto: 'Excluir assuntos da "rodagem"',
-                parametros: ['excluir', '#pulaBlocos_gerenciar_inputSalvar'],
+                parametros: ['excluir', '#pulaBlocos_divGerenciar_inputSalvar'],
                 coluna: 'botoes'
             },
             //{
             //    tipo: 'criaTitulo',
             //    id: 'tituloBlocos',
-            //    ancestral: 'pulaBlocos_divGerenciar',
             //    texto: 'Exclui assuntos',
             //    coluna: 'botoes',
             //},
             //{
             //    tipo: 'criaTexto',
             //    id: 'tituloBlocos',
-            //    ancestral: 'pulaBlocos_divGerenciar',
             //    texto: 'Copie e cole os assuntos que devem ser excluídos, ou seja, não "rodarão".',
             //    coluna: 'botoes',
             //},
             //{
             //    tipo: 'criaInput',
             //    id: 'inputExcluir',
-            //    ancestral: 'pulaBlocos_divGerenciar',
             //    placeholder: 'Cole aqui + enter ou clique no botão para excluir assuntos.',
             //    acao: 'salvarExcluir',
-            //    parametros: ['excluir', '#pulaBlocos_gerenciar_inputExcluir'],
+            //    parametros: ['excluir', '#pulaBlocos_divGerenciar_inputExcluir'],
             //    coluna: 'botoes'
             //},
             //{
             //    tipo: 'criaBotao',
             //    id: 'inputBotao',
-            //    ancestral: 'pulaBlocos_divGerenciar',
             //    acao: 'salvarExcluir',
             //    texto: 'Excluir assuntos',
-            //    parametros: ['excluir', '#pulaBlocos_gerenciar_inputExcluir'],
+            //    parametros: ['excluir', '#pulaBlocos_divGerenciar_inputExcluir'],
             //    coluna: 'botoes'
             //},
             {
@@ -279,6 +284,7 @@ async function iniciaGran() {
             criaBotaoComCheckbox,
             salvarExcluir,
             atualizaMaterias,
+            atualizaPagina,
         }
         let secoesTamanho = 0
         secoesGerenciar.map(d=> {secoesTamanho = secoesTamanho + d?.peso})
@@ -291,7 +297,7 @@ async function iniciaGran() {
         for (let d of secoesGerenciar){
             let rc = d?.nome == 'editar' ? 'row' : 'column'
             let coluna = criaDiv({
-                id:'pulaBlocos_gerenciar_coluna_' + d?.nome,
+                id:'pulaBlocos_divGerenciar_coluna_' + d?.nome,
                 ancestral:'pulaBlocos_divGerenciar_corpo',
                 gap: '4px',
                 rowColumn: rc
@@ -305,8 +311,8 @@ async function iniciaGran() {
                     let funcao = m?.tipo
                     let elemento = mapaFuncoesGerenciar[funcao]({
                         texto: m?.texto,
-                        id: 'pulaBlocos_gerenciar_' + m?.id,
-                        ancestral: 'pulaBlocos_gerenciar_coluna_' + m?.coluna,
+                        id: 'pulaBlocos_divGerenciar_' + m?.id,
+                        ancestral: 'pulaBlocos_divGerenciar_coluna_' + m?.coluna,
                         placeholder: m?.placeholder,
                         valorInicial: m?.valorInicial,
                         opcoes: m?.opcoes,
@@ -334,27 +340,37 @@ Direito Constitucional`
             }
         }
 
+        async function atualizaPagina(){
+            window.location.reload()
+        }
         
         async function salvarExcluir(acao, input) {
             let elemento = document.querySelector(input)
             let conteudo = elemento.value
             relatar(conteudo)
-            let testadas = conteudo
-                .split('\n')
-                .map(d=> d.trim())
-                .filter(d=> /^\d+(\.\d+)*\./.test(d));
-            if (testadas.length = 0){
+            let testadas = conteudo.split('\n').map(d=> d.trim()).filter(d=> /^\d+(\.\d+)*\./.test(d));
+            if (testadas.length == 0){
                 //rotina retorno
                 return
             }
-            let estudadas = await obterArmazenamento('materiasEstudadas')
-            let materiaAtualNome = estudadas?.atual?.materia || ''
+            relatar('359: ', testadas)
+            let dados = await obterArmazenamento('pulaBlocos')
+            let indice = dados.materias.findIndex(d=> normalizar(d.nome) == normalizar(materias?.atual)) || {}
+            
+            let blocos = dados.materias[indice]?.[acao] || []
+            blocos.push(testadas)
+            dados.materias[indice][acao] = blocos
+            //blocos.push(materia.assuntos.filter(d=> d.indice.replace(/\d+\./,'') + ' ' + d.nome == materia.assunto))
+            relatar ('362: ', blocos)
+            await armazenar({pulaBlocos: dados})
             //let materiaAtual = estudadas.findIndex(d => d.nome == materiaAtualNome) || null
-            let bloco = []
-            for (t of testadas){
-
-            }
-        
+            //relatar ('362: ', materia)
+            ////let blocos = []
+            //for (t of testadas){
+            //    relatar('362: ', t)
+            //    blocos.push(materia.assuntos.filter(d=> d.indice.replace(/\d+\./,'') + ' ' + d.nome == t))
+            //}
+            //relatar ('362: ', blocos)
         }
     }
     //let botoes = [
