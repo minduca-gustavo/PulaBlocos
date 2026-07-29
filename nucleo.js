@@ -129,3 +129,7 @@ async function navegar(url, opcoes = {}) {
 async function blocoFetch(url, opcoes = {}) {
     return _pedirAoBackground('blocoFetch', { url, opcoes })
 }
+
+function normalizar(texto){
+    return String(texto ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}

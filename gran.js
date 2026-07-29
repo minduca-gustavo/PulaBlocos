@@ -12,8 +12,7 @@ async function iniciaGran() {
         gap: '4px'
     })
     let t = 0
-    let larguraCalculo = window.screen.availWidth / [Object.entries(PAGINAS.tiposDeBotoes)].length
-    let largura = larguraCalculo > 185 ? '185px' : larguraCalculo + 'px'
+    let largura = Math.floor(100 / [Object.entries(PAGINAS.tiposDeBotoes)].length) + '%'
     let modoArmazenado = await obterArmazenamento('materiasEstudadas') || {}
     let modo = modoArmazenado.atual?.modo || 'facilCertoErrado'
     relatar('modo', modo, 'roxo')
@@ -45,6 +44,7 @@ async function iniciaGran() {
             acao: () => mapaFuncoes[funcao](...parametros),
         })
         botao.style.width = largura
+        botao.style.maxWidth = '185px'
         t++
     }
 
@@ -130,8 +130,25 @@ async function iniciaGran() {
         let divGerenciar = criaDiv({
             id: 'pulaBlocos_divGerenciar',
             ancestral: '.questoes-navbar',
-            gap: '4px'
+            gap: '4px',
+            rowColumn: 'row'
         })
+        let materias = await obterArmazenamento('pulaBlocos')
+        let materiaAtual = materias?.atual ? materias?.atual : 'Selecione uma matéria.'
+        let opcoes = ['Selecione uma matéria.']
+        if (materias?.materias){
+            for (m of materias?.materias){
+                opcoes.push(m?.nome)
+            }
+        }
+        
+        let divGerenciarCorpo = criaDiv({
+            id: 'pulaBlocos_divGerenciar_corpo',
+            ancestral: '.questoes-navbar',
+            gap: '4px',
+            rowColumn: 'row'
+        })
+        
         //  secoes a criar:
         //  inputBlocos
         //  inputExcluir
@@ -141,19 +158,33 @@ async function iniciaGran() {
         //
         let secoesGerenciar = [
             {
-                tipo: 'criaTitulo',
-                id: 'tituloBlocos',
-                ancestral: 'pulaBlocos_divGerenciar',
-                texto: 'Cria blocos',
-                coluna: 1,
+                nome:   'input',
+                peso:   2
             },
             {
-                tipo: 'criaTexto',
-                id: 'tituloBlocos',
-                ancestral: 'pulaBlocos_divGerenciar',
-                texto: 'Copie e cole os assuntos para criar blocos.',
-                coluna: 1,
+                nome:   'botoes',
+                peso:   1
             },
+            {
+                nome:   'editar',
+                peso:   2
+            },
+        ]
+        let elementosGerenciar = [
+            //{
+            //    tipo: 'criaTitulo',
+            //    id: 'tituloBlocos',
+            //    ancestral: 'pulaBlocos_divGerenciar',
+            //    texto: 'Cria blocos',
+            //    coluna: 'input',
+            //},
+            //{
+            //    tipo: 'criaTexto',
+            //    id: 'tituloBlocos',
+            //    ancestral: 'pulaBlocos_divGerenciar',
+            //    texto: 'Copie e cole os assuntos para criar blocos.',
+            //    coluna: 'input',
+            //},
             {
                 tipo: 'criaInput',
                 id: 'inputSalvar',
@@ -161,55 +192,81 @@ async function iniciaGran() {
                 placeholder: 'Cole aqui + enter ou clique no botão para montar blocos.',
                 acao: 'salvarExcluir',
                 parametros: ['salvar', '#pulaBlocos_gerenciar_inputSalvar'],
-                coluna: 1
+                coluna: 'input'
             },
             {
                 tipo: 'criaBotao',
-                id: 'inputBotao',
+                id: 'atualizaMaterias',
+                ancestral: 'pulaBlocos_divGerenciar',
+                acao: 'atualizaMaterias',
+                texto: 'Atualiza matérias',
+                parametros: ['#pulaBlocos_gerenciar_inputSalvar'],
+                coluna: 'botoes'
+            },
+            {
+                tipo: 'criaBotao',
+                id: 'salvaBloco',
                 ancestral: 'pulaBlocos_divGerenciar',
                 acao: 'salvarExcluir',
                 texto: 'Salvar como bloco',
                 parametros: ['salvar', '#pulaBlocos_gerenciar_inputSalvar'],
-                coluna: 1
-            },
-            {
-                tipo: 'criaTitulo',
-                id: 'tituloBlocos',
-                ancestral: 'pulaBlocos_divGerenciar',
-                texto: 'Exclui assuntos',
-                coluna: 2,
-            },
-            {
-                tipo: 'criaTexto',
-                id: 'tituloBlocos',
-                ancestral: 'pulaBlocos_divGerenciar',
-                texto: 'Copie e cole os assuntos que devem ser excluídos, ou seja, não "rodarão".',
-                coluna: 2,
-            },
-            {
-                tipo: 'criaInput',
-                id: 'inputExcluir',
-                ancestral: 'pulaBlocos_divGerenciar',
-                placeholder: 'Cole aqui + enter ou clique no botão para excluir assuntos.',
-                acao: 'salvarExcluir',
-                parametros: ['excluir', '#pulaBlocos_gerenciar_inputExcluir'],
-                coluna: 2
+                coluna: 'botoes'
             },
             {
                 tipo: 'criaBotao',
-                id: 'inputBotao',
+                id: 'excluiAssunto',
                 ancestral: 'pulaBlocos_divGerenciar',
                 acao: 'salvarExcluir',
-                texto: 'Excluir assuntos',
-                parametros: ['excluir', '#pulaBlocos_gerenciar_inputExcluir'],
-                coluna: 2
+                texto: 'Excluir assuntos da "rodagem"',
+                parametros: ['excluir', '#pulaBlocos_gerenciar_inputSalvar'],
+                coluna: 'botoes'
             },
+            //{
+            //    tipo: 'criaTitulo',
+            //    id: 'tituloBlocos',
+            //    ancestral: 'pulaBlocos_divGerenciar',
+            //    texto: 'Exclui assuntos',
+            //    coluna: 'botoes',
+            //},
+            //{
+            //    tipo: 'criaTexto',
+            //    id: 'tituloBlocos',
+            //    ancestral: 'pulaBlocos_divGerenciar',
+            //    texto: 'Copie e cole os assuntos que devem ser excluídos, ou seja, não "rodarão".',
+            //    coluna: 'botoes',
+            //},
+            //{
+            //    tipo: 'criaInput',
+            //    id: 'inputExcluir',
+            //    ancestral: 'pulaBlocos_divGerenciar',
+            //    placeholder: 'Cole aqui + enter ou clique no botão para excluir assuntos.',
+            //    acao: 'salvarExcluir',
+            //    parametros: ['excluir', '#pulaBlocos_gerenciar_inputExcluir'],
+            //    coluna: 'botoes'
+            //},
+            //{
+            //    tipo: 'criaBotao',
+            //    id: 'inputBotao',
+            //    ancestral: 'pulaBlocos_divGerenciar',
+            //    acao: 'salvarExcluir',
+            //    texto: 'Excluir assuntos',
+            //    parametros: ['excluir', '#pulaBlocos_gerenciar_inputExcluir'],
+            //    coluna: 'botoes'
+            //},
             {
                 tipo: 'criaTitulo',
-                id: 'tituloBlocos',
-                ancestral: 'pulaBlocos_divGerenciar',
-                texto: 'Apagar Filtros',
-                coluna: 3,
+                id: 'pulaBlocos_divGerenciar_titulo',
+                ancestral: '#pulaBlocos_divGerenciar',
+                texto: 'Matéria atual:',
+                coluna: 'editar',
+            },
+            {
+                tipo: 'criaMenuSuspenso',
+                id: 'pulaBlocos_divGerenciar_menu',
+                ancestral: '#pulaBlocos_divGerenciar',
+                valorInicial: materiaAtual,
+                opcoes: opcoes,
+                coluna: 'editar',
             },
 
         ]
@@ -218,45 +275,86 @@ async function iniciaGran() {
             criaTexto,
             criaInput,
             criaBotao,
+            criaMenuSuspenso,
             criaBotaoComCheckbox,
             salvarExcluir,
-            alert,
+            atualizaMaterias,
         }
-
-        let colunas = Math.max(...secoesGerenciar.map(d=> d.coluna))
-        let larguraCalculo = window.screen.availWidth / colunas
-        let largura = larguraCalculo > 600 ? '600px' : larguraCalculo + 'px'
+        let secoesTamanho = 0
+        secoesGerenciar.map(d=> {secoesTamanho = secoesTamanho + d?.peso})
+        console.log(secoesTamanho)
+        let colunas = Math.max(...elementosGerenciar.map(d=> d.coluna))
+        let larguraCalculo = Math.floor(100 / secoesTamanho)
+        relatar ('larguraCalculo: ' + larguraCalculo)
         //let colunasNumero = Math.max(colunas)
         relatar ('colunas', colunas)
-        for (let i = 1; i <= colunas; i++){
+        for (let d of secoesGerenciar){
+            let rc = d?.nome == 'editar' ? 'row' : 'column'
             let coluna = criaDiv({
-                id:'pulaBlocos_gerenciar_coluna' + i,
-                ancestral:'pulaBlocos_divGerenciar',
+                id:'pulaBlocos_gerenciar_coluna_' + d?.nome,
+                ancestral:'pulaBlocos_divGerenciar_corpo',
                 gap: '4px',
-                rowColumn: 'column'
+                rowColumn: rc
             })
-            coluna.style.width = largura
-            for (let m of secoesGerenciar){
-                if (m?.coluna == i){
+            coluna.style.width = (larguraCalculo * d?.peso) + '%'
+            coluna.style.maxWidth = '600px'
+            for (let m of elementosGerenciar){
+                if (d?.nome == m?.coluna){
                     let acao = m?.acao
                     let parametros = m?.parametros || []
                     let funcao = m?.tipo
                     let elemento = mapaFuncoesGerenciar[funcao]({
                         texto: m?.texto,
                         id: 'pulaBlocos_gerenciar_' + m?.id,
-                        ancestral: 'pulaBlocos_gerenciar_coluna' + i,
+                        ancestral: 'pulaBlocos_gerenciar_coluna_' + m?.coluna,
                         placeholder: m?.placeholder,
+                        valorInicial: m?.valorInicial,
+                        opcoes: m?.opcoes,
                         acao: () => mapaFuncoesGerenciar[acao](...parametros)
                     })
-                }
+                    if (m?.tipo == 'criaInput'){
+                        elemento.style.height = '100%'
+                        elemento.value = `Administração Geral
+Administração Pública
+Direito Administrativo
+Fluência de dados
+Raciocínio Lógico
+Direito Previdenciário
+Comércio Internacional
+Língua Portuguesa
+Direito Tributário
+Língua Inglesa
+Estatística
+Auditoria
+Contabilidade Geral
+Economia e Finanças
+Direito Constitucional`
+                    }
+                }    
             }
         }
 
         
         async function salvarExcluir(acao, input) {
             let elemento = document.querySelector(input)
-            let resultado = elemento.value
-            
+            let conteudo = elemento.value
+            relatar(conteudo)
+            let testadas = conteudo
+                .split('\n')
+                .map(d=> d.trim())
+                .filter(d=> /^\d+(\.\d+)*\./.test(d));
+            if (testadas.length = 0){
+                //rotina retorno
+                return
+            }
+            let estudadas = await obterArmazenamento('materiasEstudadas')
+            let materiaAtualNome = estudadas?.atual?.materia || ''
+            //let materiaAtual = estudadas.findIndex(d => d.nome == materiaAtualNome) || null
+            let bloco = []
+            for (t of testadas){
+
+            }
+        
         }
     }
     //let botoes = [

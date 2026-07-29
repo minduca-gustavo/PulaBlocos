@@ -428,11 +428,12 @@ function criaBotaoComCheckbox({ id, idCheckbox, texto = 'OK', ancestral, acao, c
 // criaInput({ id, ancestral, placeholder, valorInicial, acao })
 
 function criaInput({ id, ancestral, placeholder = '', valorInicial = '', acao }) {
-    const el = _ui_el('input', {
+    const el = _ui_el('textarea', {
         width: '100%', boxSizing: 'border-box', padding: '7px 10px',
         border: '1px solid ' + UI_CORES.borda, borderRadius: '6px',
         fontSize: '12px', fontFamily: UI_FONTE, color: UI_CORES.texto,
-        outline: 'none', whiteSpace: 'nowrap', height: 'fit-content'
+        outline: 'none', whiteSpace: 'pre-wrap', height: 'fit-content',
+        overflowY: 'auto', resize: 'vertical',
     })
     el.id = id
     el.type = 'text'

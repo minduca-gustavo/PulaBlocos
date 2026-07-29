@@ -65,13 +65,14 @@ async function bFetch(url){
     return resposta
 }
 
-async function atualizaBlocos() {
+async function atualizaMaterias(materiasTexto) {
     let dados = await bFetch(PAGINAS.assuntos)
-    console.log(JSON.stringify(dados))
+    //console.log(JSON.stringify(dados))
     let array = dados?.resultado?.corpo?.data?.rows
-    let materiasEstudadasGit = await buscarGit()
-    let materiasEstudadas = materiasEstudadasGit?.resultado?.corpo?.materiasEstudadas?.materias
-    relatar('65: ', materiasEstudadas, 'azul')
+    relatar ('', array)
+    //let materiasEstudadasGit = await buscarGit()
+    //let materiasEstudadas = materiasEstudadasGit?.resultado?.corpo?.materiasEstudadas?.materias
+    //relatar('65: ', materiasEstudadas, 'azul')
     //return
     //let materiasEstudadas = [
     //    'Administração Geral',
@@ -90,24 +91,31 @@ async function atualizaBlocos() {
     //    'Economia e Finanças',
     //    'Direito Constitucional'
     //]
-    let materias = []
-    let materiasNome = []
+    let materiasConsultar = (document.querySelector(materiasTexto)).value.
+        split('\n').map(d=> normalizar(d))
+    
+    //materiasTexto.split('\n').map(d=> normalizar(d))
+    //relatar ('',materias)
+    //return
+    let pulaBlocos = {materias: []}
     for(let k of array){
         let materia = {}
         materia.nome = k?.nome
         materia.id = k?.id
-        let estaContido = materiasEstudadas.some(j => j?.nome == k?.nome)
+        let normalizado = normalizar(k?.nome)
+        relatar('106: ' + normalizado)
+        let estaContido = materiasConsultar.some(j => j == normalizado)
         if(estaContido){
-            materias.push(materia)
-            materiasNome.push(k?.nome)
+            pulaBlocos?.materias.push(materia)
         }
     }
+    relatar('pulaBlocos', pulaBlocos, 'azul')
     let i = 0
-    for (let m of materias){
+    for (let m of pulaBlocos?.materias){
         let url = 'https://rota-api.grancursosonline.com.br/v3/materia/arvore?perPage=150&page=1&sort=indiceOrdenacao&pages=3&materia=0&comQuestoes=1&raiz%5B%5D=' + m?.id + '&_source%5B%5D=id&_source%5B%5D=nome&_source%5B%5D=assunto_raiz&_source%5B%5D=pai&_source%5B%5D=indice&_source%5B%5D=nivel&_source%5B%5D=filhos'
         let materia = await bFetch(url)
-        materias[i].paginas = materia?.resultado?.corpo?.data?.pages
-        materias[i].assuntos = []
+        pulaBlocos.materias[i].paginas = materia?.resultado?.corpo?.data?.pages
+        pulaBlocos.materias[i].assuntos = []
         for (let m of materia?.resultado?.corpo?.data?.rows){
             let obj = {
                 assunto_raiz: m?.assunto_raiz,
@@ -115,9 +123,9 @@ async function atualizaBlocos() {
                 indice: m?.indice,
                 nome: m?.nome,
             }
-            materias[i].assuntos.push(obj)    
+            pulaBlocos.materias[i].assuntos.push(obj)    
         }
-        for (let j = 2; j <= materias[i].paginas; j++){
+        for (let j = 2; j <= pulaBlocos.materias[i].paginas; j++){
             let url = 'https://rota-api.grancursosonline.com.br/v3/materia/arvore?perPage=150&page=' + j + '&sort=indiceOrdenacao&pages=3&materia=0&comQuestoes=1&raiz%5B%5D=' + m?.id + '&_source%5B%5D=id&_source%5B%5D=nome&_source%5B%5D=assunto_raiz&_source%5B%5D=pai&_source%5B%5D=indice&_source%5B%5D=nivel&_source%5B%5D=filhos'
             let materia = await bFetch(url)
             for (let m of materia?.resultado?.corpo?.data?.rows){
@@ -127,7 +135,7 @@ async function atualizaBlocos() {
                     indice: m?.indice,
                     nome: m?.nome,
                 }
-                materias[i].assuntos.push(obj)    
+                pulaBlocos.materias[i].assuntos.push(obj)    
             }
         }
         i++
@@ -135,7 +143,7 @@ async function atualizaBlocos() {
         
     }
     let url = ''
-    await armazenar({materias: materias, materiasEstudadas: materiasEstudadasGit?.resultado?.corpo?.materiasEstudadas})
+    await armazenar({pulaBlocos: pulaBlocos})
     
 }
 

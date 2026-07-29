@@ -7,17 +7,16 @@
             {"nome":"Fluência de dados", "acertos":"69", "total":"104"},
             {"nome":"Raciocínio Lógico", "acertos":"74", "total":"105"},
             {"nome":"Direito Previdenciário", "acertos":"107", "total":"144"},
-            {"nome":"Comércio Internacional", "label":"Comércio Internacional", "acertos":"41", "total":"76"},
+            {"nome":"Comércio Internacional", "acertos":"41", "total":"76","label":{"nome":"Legislação Aduaneira", "acertos":"62", "total":"103"}},
             {"nome":"Língua Portuguesa", "acertos":"145", "total":"159"},
-            {"nome":"Direito Tributário", "label":"Direito Tributário","acertos":"285", "total":"383"},
-            {"nome":"Direito Tributário", "label":"Legislação Tributária", "acertos":"77", "total":"110"},
+            {"nome":"Direito Tributário", "acertos":"77", "total":"110", "label":{"nome":"Direito Tributário","acertos":"285", "total":"383"}},
             {"nome":"Língua Inglesa", "acertos":"142", "total":"174"},
             {"nome":"Estatística", "acertos":"20", "total":"32"},
             {"nome":"Auditoria", "acertos":"77", "total":"116"},
             {"nome":"Contabilidade Geral", "acertos":"187", "total":"289"},
             {"nome":"Economia e Finanças", "acertos":"17", "total":"28"},
-            {"nome":"Direito Constitucional", "acertos":"111", "total":"138", "assunto": "6.4.2.10. Jurisprudência do STF e do STJ ou Jurisprudência dos Tribunais Superiores"},
-            {"nome":"Comércio Internacional", "label":"Legislação Aduaneira", "acertos":"62", "total":"103"}
+            {"nome":"Direito Constitucional", "acertos":"111", "total":"138", "assunto": "6.4.2.10. Jurisprudência do STF e do STJ ou Jurisprudência dos Tribunais Superiores"}
+
         ],
         "atual": {
             "materia": "Direito Constitucional",
