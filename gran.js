@@ -136,7 +136,7 @@ async function iniciaGran() {
             rowColumn: 'row'
         })
         let materias = await obterArmazenamento('pulaBlocos')
-        let materiaAtual = materias?.atual ? materias?.atual : 'Selecione uma matéria.'
+        //let materiaAtual = materias?.atual ? materias?.atual : 'Selecione uma matéria.'
         let opcoes = ['Selecione uma matéria.']
         if (materias?.materias){
             for (m of materias?.materias){
@@ -230,6 +230,14 @@ async function iniciaGran() {
                 parametros: ['excluir', '#pulaBlocos_divGerenciar_inputSalvar'],
                 coluna: 'botoes'
             },
+            {
+                tipo: 'criaBotao',
+                id: 'salvarDados',
+                acao: 'salvarDados',
+                texto: 'Copia dados da extensão para salvar.',
+                parametros: [],
+                coluna: 'botoes'
+            },
             //{
             //    tipo: 'criaTitulo',
             //    id: 'tituloBlocos',
@@ -260,17 +268,19 @@ async function iniciaGran() {
             //},
             {
                 tipo: 'criaTitulo',
-                id: 'pulaBlocos_divGerenciar_titulo',
+                id: 'editarTitulo',
                 ancestral: '#pulaBlocos_divGerenciar',
-                texto: 'Matéria atual:',
+                texto: 'Matéria:',
                 coluna: 'editar',
             },
             {
                 tipo: 'criaMenuSuspenso',
-                id: 'pulaBlocos_divGerenciar_menu',
+                id: 'editarMenu',
                 ancestral: '#pulaBlocos_divGerenciar',
-                valorInicial: materiaAtual,
+                valorInicial: 'Selecione uma matéria.',
                 opcoes: opcoes,
+                acao: 'editarBlocos',
+                parametros: ['#pulaBlocos_divGerenciar_editarMenu'],
                 coluna: 'editar',
             },
 
@@ -285,6 +295,8 @@ async function iniciaGran() {
             salvarExcluir,
             atualizaMaterias,
             atualizaPagina,
+            editarBlocos,
+            salvarDados,
         }
         let secoesTamanho = 0
         secoesGerenciar.map(d=> {secoesTamanho = secoesTamanho + d?.peso})
@@ -336,12 +348,26 @@ Contabilidade Geral
 Economia e Finanças
 Direito Constitucional`
                     }
-                }    
+                    if (m?.tipo == 'criaMenuSuspenso') elemento.style.width = '100%'
+                }
+                
             }
         }
 
         async function atualizaPagina(){
             window.location.reload()
+        }
+
+        async function editarBlocos(seletor){
+            relatar('editarBlocos')
+            let elemento = document.querySelector(seletor)
+            relatar(elemento.innerText)
+            let dados = await obterArmazenamento('pulaBlocos') || {}
+            if (!dados?.materias) return
+            relatar(15)
+            let materia = dados?.materias.find(d => d.nome == elemento.innerText.trim())
+            if (!materia?.blocos && !materia?.excluir) return
+            alert('Oi')
         }
         
         async function salvarExcluir(acao, input) {

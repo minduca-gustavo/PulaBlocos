@@ -130,6 +130,11 @@ async function blocoFetch(url, opcoes = {}) {
     return _pedirAoBackground('blocoFetch', { url, opcoes })
 }
 
+async function salvarDados() {
+    let dados = await obterArmazenamento('pulaBlocos')
+    await navigator.clipboard.writeText(JSON.stringify(dados));
+}
+
 function normalizar(texto){
     return String(texto ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
