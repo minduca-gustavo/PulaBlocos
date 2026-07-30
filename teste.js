@@ -59,4 +59,4 @@ async function teste() {
 }
 //atualizaMaterias()
 //teste()
-atualiza()
+//atualiza()

@@ -7,6 +7,15 @@ async function iniciaGran() {
         d.remove()
     }
     
+    let divTitulo = criaDiv({
+        id: 'pulaBlocos_div_titulo',
+        ancestral: '.questoes-navbar',
+        gap: '50px',
+        rowColumn: 'row'
+    })
+    criaTitulo({ id: 'pulaBlocos_materiaAtual', texto: 'Matéria atual: —', ancestral: 'pulaBlocos_div_titulo' })
+    criaTitulo({ id: 'pulaBlocos_assuntoAtual', texto: 'Assunto atual: —', ancestral: 'pulaBlocos_div_titulo' })
+    await atualizarCabecalho()
     let div = criaDiv({
         id: 'pulaBlocos_div',
         ancestral: '.questoes-navbar',
@@ -17,6 +26,9 @@ async function iniciaGran() {
     let modoArmazenado = await obterArmazenamento('pulaBlocos') || {}
     let modo = modoArmazenado.modo || 'facilCertoErrado'
     relatar('modo', modo, 'roxo')
+
+    
+
     let mapaFuncoes = {
         gerenciar,
         alteraTipo,
@@ -121,6 +133,20 @@ async function iniciaGran() {
         return { idMateria: materia.id, blocoArray: unidade.ids }
     }
 
+    // Lê pulaBlocos e atualiza os dois textos do topo (matéria/assunto
+    // atuais). 'assunto atual' é o assunto de id == posicaoAtual — que já É
+    // o último do bloco, se a unidade corrente for um bloco.
+    async function atualizarCabecalho() {
+        let dados = await obterArmazenamento('pulaBlocos') || {}
+        let materia = (dados.materias || []).find(m => m.nome === dados.atual)
+        let assuntoAtual = materia?.assuntos?.find(a => a.id === materia?.posicaoAtual)
+
+        let elMateria = document.getElementById('pulaBlocos_materiaAtual')
+        let elAssunto = document.getElementById('pulaBlocos_assuntoAtual')
+        if (elMateria) elMateria.textContent = 'Matéria atual: ' + (materia?.nome || '—')
+        if (elAssunto) elAssunto.textContent = 'Assunto atual: ' + (assuntoAtual?.nome || '—')
+    }
+
     // Monta a URL do modo atualmente selecionado (pulaBlocos.modo) e navega
     // com os assuntos passados. Usada tanto por alteraTipo (troca de modo)
     // quanto por avancar (troca de matéria/bloco, mantendo o modo).
@@ -145,6 +171,7 @@ async function iniciaGran() {
     // avança a posição (ou não, se for 'atuais') e navega no modo vigente.
     async function avancar(direcao) {
         let {idMateria, blocoArray} = await assuntos(direcao)
+        await atualizarCabecalho()
         await navegarParaAssunto(idMateria, blocoArray)
     }
 
@@ -163,6 +190,7 @@ async function iniciaGran() {
             botao.style.background = corBase
             _ui_hoverBotao(botao, corBase, corHover)
         }
+        await atualizarCabecalho()
         await navegarParaAssunto(idMateria, blocoArray)
     }
 
