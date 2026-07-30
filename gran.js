@@ -20,7 +20,7 @@ async function iniciaGran() {
     let mapaFuncoes = {
         gerenciar,
         alteraTipo,
-        assuntos
+        avancar
     }
     for (let [nomeTipo, dados] of Object.entries(PAGINAS.tiposDeBotoes)) {
         //console.log(nomeTipo, dados)
@@ -31,7 +31,7 @@ async function iniciaGran() {
             funcao = 'alteraTipo'
             parametros = [dados?.url, nomeTipo, tipoId]
         } else if (dados?.materiaOuAssunto) {
-            funcao = 'assuntos'
+            funcao = 'avancar'
             parametros = [dados?.materiaOuAssunto]
         } else if (dados?.acao) {
             funcao = dados?.acao
@@ -121,6 +121,33 @@ async function iniciaGran() {
         return { idMateria: materia.id, blocoArray: unidade.ids }
     }
 
+    // Monta a URL do modo atualmente selecionado (pulaBlocos.modo) e navega
+    // com os assuntos passados. Usada tanto por alteraTipo (troca de modo)
+    // quanto por avancar (troca de matéria/bloco, mantendo o modo).
+    async function navegarParaAssunto(idMateria, blocoArray) {
+        if (!idMateria || !blocoArray?.length) {
+            relatar('sem matéria/bloco pra navegar', { idMateria, blocoArray }, 'vermelho')
+            return
+        }
+        let dados = await obterArmazenamento('pulaBlocos') || {}
+        let modoAtual = dados.modo || 'facilCertoErrado'
+        let url = PAGINAS.tiposDeBotoes[modoAtual]?.url
+        if (!url) {
+            relatar('não achei url pro modo atual', modoAtual, 'vermelho')
+            return
+        }
+        let urlNavegar = url + '&assunto=' + idMateria + '%2C' + blocoArray.join('%2C')
+        await navegar(urlNavegar, { novaAba: false })
+        relatar('urlNavegar', urlNavegar, 'azul')
+    }
+
+    // Chamada pelos botões 'atual' / 'proximaMateria' / 'proximoBloco' —
+    // avança a posição (ou não, se for 'atuais') e navega no modo vigente.
+    async function avancar(direcao) {
+        let {idMateria, blocoArray} = await assuntos(direcao)
+        await navegarParaAssunto(idMateria, blocoArray)
+    }
+
     async function alteraTipo(url, nome, tipoId){
         let dados = await obterArmazenamento('pulaBlocos')
         dados.modo = nome
@@ -136,9 +163,7 @@ async function iniciaGran() {
             botao.style.background = corBase
             _ui_hoverBotao(botao, corBase, corHover)
         }
-        let urlNavegar = url + '&assunto=' + idMateria + '%2C' + blocoArray.join('%2C')
-        await navegar(urlNavegar, {novaAba: false})
-        relatar('urlNavegar', urlNavegar, 'azul')
+        await navegarParaAssunto(idMateria, blocoArray)
     }
 
     async function gerenciar() {
