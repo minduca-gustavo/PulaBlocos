@@ -14,8 +14,8 @@ async function iniciaGran() {
     })
     let t = 0
     let largura = Math.floor(100 / [Object.entries(PAGINAS.tiposDeBotoes)].length) + '%'
-    let modoArmazenado = await obterArmazenamento('pulaBlocos') || {}
-    let modo = modoArmazenado.modo || 'facilCertoErrado'
+    let modoArmazenado = await obterArmazenamento('materiasEstudadas') || {}
+    let modo = modoArmazenado.atual?.modo || 'facilCertoErrado'
     relatar('modo', modo, 'roxo')
     let mapaFuncoes = {
         gerenciar,
@@ -28,10 +28,10 @@ async function iniciaGran() {
         let [funcao, parametros] = ['', {}]
         let cor = modo == nomeTipo ? '#d62839' : 'primaria'
         if (dados?.url){
-            funcao = 'alteraTipo'
+            funcao = alteraTipo
             parametros = [dados?.url, nomeTipo, tipoId]
         } else if (dados?.materiaOuAssunto) {
-            funcao = 'assuntos'
+            funcao = assuntos
             parametros = [dados?.materiaOuAssunto]
         } else if (dados?.acao) {
             funcao = dados?.acao
@@ -50,95 +50,77 @@ async function iniciaGran() {
     }
     
 
-    // Uma "unidade" é ou um assunto avulso, ou um bloco inteiro (tratado
-    // como se fosse um único passo pra fins de navegação). 'excluir' nunca
-    // vira unidade — some da sequência inteiramente.
-    function idDaLinha(materia, linha) {
-        let alvo = linha.trim()
-        let assunto = (materia.assuntos || []).find(a => (a.indice + ' ' + a.nome) === alvo)
-        return assunto?.id
-    }
-
-    function montarUnidades(materia) {
-        let excluidos = new Set(
-            (materia.excluir || []).flat().map(linha => idDaLinha(materia, linha)).filter(Boolean)
-        )
-        let inicioDeBloco = new Map() // id do primeiro assunto do bloco → ids do bloco inteiro
-        ;(materia.blocos || []).forEach(bloco => {
-            let ids = bloco.map(linha => idDaLinha(materia, linha)).filter(Boolean)
-            if (ids.length) inicioDeBloco.set(ids[0], ids)
-        })
-
-        let unidades = []
-        let assuntosOrdenados = materia.assuntos || []
-        let i = 0
-        while (i < assuntosOrdenados.length) {
-            let assunto = assuntosOrdenados[i]
-            if (excluidos.has(assunto.id)) { i++; continue }
-            let bloco = inicioDeBloco.get(assunto.id)
-            if (bloco) {
-                unidades.push({ ids: bloco, ultimoId: bloco[bloco.length - 1] })
-                i += bloco.length // bloco é contíguo, pula ele inteiro
-            } else {
-                unidades.push({ ids: [assunto.id], ultimoId: assunto.id })
-                i++
+    async function assuntos(materiaAssuntoAtuais) {
+        let valores = {
+            materia: {
+                somaMateria: 1,
+                somaAssunto: 0
+            },
+            assunto: {
+                somaMateria: 0,
+                somaAssunto: 1
+            },
+            atuais: {
+                somaMateria: 0,
+                somaAssunto: 0
             }
         }
-        return unidades
+        let{idMateria, idAssunto} = await defineIdAssuntos(valores[materiaAssuntoAtuais].somaMateria, valores[materiaAssuntoAtuais].somaAssunto)
+        let blocoArray = []
+        blocoArray.push(idAssunto)
+        relatar(idMateria)
+        relatar(idAssunto)
+        relatar('blocoArray', blocoArray, 'roxo')
+        return {idMateria: idMateria, blocoArray: blocoArray}
     }
-
-    // direcao: 'materia' (pula pra próxima matéria) | 'bloco' (avança
-    // dentro da matéria atual) | 'atuais' (fica na mesma unidade, só
-    // reconsulta os ids — usado ao trocar de modo sem avançar posição)
-    async function assuntos(direcao) {
-        let dados = await obterArmazenamento('pulaBlocos')
-        if (!dados?.materias?.length) return { idMateria: undefined, blocoArray: [] }
-
-        let indiceMateria = dados.materias.findIndex(m => m.nome === dados.atual)
-        if (indiceMateria < 0) indiceMateria = 0
-
-        if (direcao === 'materia') {
-            indiceMateria = (indiceMateria + 1) % dados.materias.length
-            dados.atual = dados.materias[indiceMateria].nome
-        }
-
-        let materia = dados.materias[indiceMateria]
-        let unidades = montarUnidades(materia)
-        if (!unidades.length) return { idMateria: materia.id, blocoArray: [] }
-
-        let indiceUnidade = unidades.findIndex(u => u.ids.includes(materia.posicaoAtual))
-        if (indiceUnidade < 0) indiceUnidade = 0 // nunca andou nessa matéria ainda
-
-        if (direcao === 'bloco') {
-            indiceUnidade = (indiceUnidade + 1) % unidades.length
-        }
-
-        let unidade = unidades[indiceUnidade]
-        materia.posicaoAtual = unidade.ultimoId
-        await armazenar({ pulaBlocos: dados })
-
-        relatar('assuntos:', { idMateria: materia.id, blocoArray: unidade.ids }, 'roxo')
-        return { idMateria: materia.id, blocoArray: unidade.ids }
+    
+    async function defineIdAssuntos(somaMateria = 0, somaAssunto = 0) {
+        let materiasEstudadas = await obterArmazenamento('materiasEstudadas') || {}
+        let materias = await obterArmazenamento('materias') || []
+        let materiaAtualNome = materiasEstudadas?.atual?.materia || ''
+        let materiaAtualIndex = materias.findIndex(d => d.nome == materiaAtualNome) || null
+        if (materiaAtualIndex < 0) materiaAtualIndex = 0
+        let indiceMateriaGarantido = materias?.length <= materiaAtualIndex + somaMateria ? 0 : materiaAtualIndex + somaMateria
+        let assuntoAtualNome = (materiasEstudadas?.materias.find(d=> d?.nome == materiaAtualNome)).assunto || ''
+        let assuntoAtualIndex = materias[indiceMateriaGarantido]?.assuntos.findIndex(d => d?.indice.replace(/^\d+\./, "") + ' ' + d?.nome == assuntoAtualNome) || 0
+        if (assuntoAtualIndex < 0) assuntoAtualIndex = 0
+        let indiceAssuntoGarantido = materias[indiceMateriaGarantido]?.assuntos?.length <= assuntoAtualIndex + somaAssunto ? 0 : assuntoAtualIndex + somaAssunto
+        return {idMateria: materias[indiceMateriaGarantido]?.id, idAssunto: materias[indiceMateriaGarantido]?.assuntos[indiceAssuntoGarantido]?.id}
     }
 
     async function alteraTipo(url, nome, tipoId){
-        let dados = await obterArmazenamento('pulaBlocos')
-        dados.modo = nome
-        await armazenar({ pulaBlocos: dados })
-
+        let materiasEstudadas = await obterArmazenamento('materiasEstudadas')
+        let materias = await obterArmazenamento('materias')
+        materiasEstudadas.atual.modo = nome
         let {idMateria, blocoArray} = await assuntos('atuais')
         relatar ('85: ', JSON.stringify(blocoArray), 'verde')
-        for (let [nomeTipo, dadosBotao] of Object.entries(PAGINAS.tiposDeBotoes)) {
-            if (!dadosBotao?.url) continue
-            let botao = document.querySelector('#pulaBlocos_' + nomeTipo)
-            let corResolver = nomeTipo == nome ? '#d62839' : 'primaria'
-            let { cor: corBase, corHover } = _ui_resolveCor(corResolver)
-            botao.style.background = corBase
-            _ui_hoverBotao(botao, corBase, corHover)
+        for (let [nomeTipo, dados] of Object.entries(PAGINAS.tiposDeBotoes)) {
+            
+            let tipoId = '#pulaBlocos_' + nomeTipo
+            let botao = document.querySelector(tipoId)
+            let corResolver = ''
+            if (dados?.url){
+                if (nomeTipo == nome ){
+                    corResolver = '#d62839'
+                } else {
+                    corResolver = 'primaria'
+                }
+                let { cor: corBase, corHover, texto: corTexto } = _ui_resolveCor(corResolver)
+                botao.style.background = corBase
+                _ui_hoverBotao(botao, corBase, corHover)
+            }
         }
+        await armazenar({materiasEstudadas: materiasEstudadas})
         let urlNavegar = url + '&assunto=' + idMateria + '%2C' + blocoArray.join('%2C')
         await navegar(urlNavegar, {novaAba: false})
+        relatar('materiasEstudadas', materiasEstudadas, 'azul')
+        relatar('materias', materias, 'azul')
+        relatar('url', url, 'azul')
         relatar('urlNavegar', urlNavegar, 'azul')
+        relatar('tipoId', tipoId, 'azul')
+        //materiasEstudadas?.atual?.modo = 
+        relatar('materiasEstudadas', materiasEstudadas, 'roxo')
+
     }
 
     async function gerenciar() {
@@ -411,11 +393,7 @@ Direito Constitucional`
             }
             relatar('359: ', testadas)
             let dados = await obterArmazenamento('pulaBlocos')
-            let indice = dados.materias.findIndex(d=> normalizar(d.nome) == normalizar(materias?.atual))
-            if (indice < 0) {
-                relatar('matéria atual não encontrada em pulaBlocos', materias?.atual, 'vermelho')
-                return
-            }
+            let indice = dados.materias.findIndex(d=> normalizar(d.nome) == normalizar(materias?.atual)) || {}
             
             let blocos = dados.materias[indice]?.[acao] || []
             blocos.push(testadas)

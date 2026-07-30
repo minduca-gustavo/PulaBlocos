@@ -129,11 +129,53 @@ async function navegar(url, opcoes = {}) {
 async function blocoFetch(url, opcoes = {}) {
     return _pedirAoBackground('blocoFetch', { url, opcoes })
 }
-
+/*
 async function salvarDados() {
     let dados = await obterArmazenamento('pulaBlocos')
     await navigator.clipboard.writeText(JSON.stringify(dados));
 }
+*/
+async function salvarDados() {
+    try {
+        let dados = await obterArmazenamento('pulaBlocos')
+        let json = JSON.stringify(dados, null, 2)
+        let blob = new Blob([json], { type: 'application/json' })
+        let url = URL.createObjectURL(blob)
+ 
+        let dataAtual = new Date().toISOString().slice(0, 10) // AAAA-MM-DD
+        let a = document.createElement('a')
+        a.href = url
+        a.download = `pula-blocos-backup-${dataAtual}.json`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+    } catch (erro) {
+        console.error('[Pula Blocos] falha ao exportar backup:', erro)
+        alert('Não deu pra gerar o backup: ' + erro.message, 'erro')
+    }
+}
+
+async function carregarDados(arquivo) {
+   
+    try {
+        const texto = await arquivo.text()
+        const dados = JSON.parse(texto)
+
+        if (typeof dados !== 'object' || dados === null || Array.isArray(dados)) {
+            throw new Error('o arquivo não parece um backup válido')
+        }
+
+        await armazenar({pulaBlocos : dados})
+        alert('Backup restaurado! Feche e abra o popup de novo pra ver tudo atualizado.', 'sucesso')
+    } catch (erro) {
+        console.error('[Pula Blocos] falha ao importar backup:', erro)
+        alert('Arquivo inválido: ' + erro.message, 'erro')
+    }
+    
+    
+}
+
 
 function normalizar(texto){
     return String(texto ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')

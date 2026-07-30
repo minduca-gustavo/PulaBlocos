@@ -37,7 +37,7 @@ async function atualiza() {
     relatar('3t: ', materias, 'roxo')
     await armazenar({pulaBlocos: materias})
 }
-salvarDados()
+//salvarDados()
 async function teste() {
     let materiasEstudadas = await obterArmazenamento('materiasEstudadas') || {}
     let materias = await obterArmazenamento('materias') || []

@@ -119,10 +119,10 @@ function _ui_hoverBotao(btn, cor, corHover) {
 //
 // criaDiv({ id, ancestral, gap })
 
-function criaDiv({ id, ancestral, gap = '6px', rowColumn = 'row' }) {
+function criaDiv({ id, ancestral, gap = '6px' }) {
     const el = _ui_el('div', {
         display:       'flex',
-        flexDirection: rowColumn,
+        flexDirection: 'column',
         gap:           gap,
         marginBottom:  '8px',
     })
@@ -428,12 +428,11 @@ function criaBotaoComCheckbox({ id, idCheckbox, texto = 'OK', ancestral, acao, c
 // criaInput({ id, ancestral, placeholder, valorInicial, acao })
 
 function criaInput({ id, ancestral, placeholder = '', valorInicial = '', acao }) {
-    const el = _ui_el('textarea', {
+    const el = _ui_el('input', {
         width: '100%', boxSizing: 'border-box', padding: '7px 10px',
         border: '1px solid ' + UI_CORES.borda, borderRadius: '6px',
         fontSize: '12px', fontFamily: UI_FONTE, color: UI_CORES.texto,
-        outline: 'none', whiteSpace: 'pre-wrap', height: 'fit-content',
-        overflowY: 'auto', resize: 'vertical',
+        outline: 'none',
     })
     el.id = id
     el.type = 'text'
@@ -448,42 +447,6 @@ function criaInput({ id, ancestral, placeholder = '', valorInicial = '', acao })
     return el
 }
 
-// ── criaInputArquivo ─────────────────────────────────────────
-//
-// Botão estilizado que abre o seletor de arquivo do sistema.
-// acao(arquivo) é chamada com o File escolhido assim que o usuário
-// seleciona algo (não precisa de botão "confirmar" separado).
-//
-// criaInputArquivo({ id, texto, ancestral, aceita, cor, acao })
-//   aceita: string tipo '.json' (mesmo formato do atributo accept)
-
-function criaInputArquivo({ id, texto = 'Escolher arquivo', ancestral, aceita = '', cor = 'secundaria', acao }) {
-    const { cor: corBase, corHover, texto: corTexto } = _ui_resolveCor(cor)
-
-    const wrapper = _ui_el('div', {})
-    wrapper.id = id
-
-    const input = _ui_el('input', { display: 'none' })
-    input.type = 'file'
-    if (aceita) input.accept = aceita
-
-    const botao = _ui_el('button', _ui_estiloBotao(corBase, corHover, corTexto))
-    botao.type = 'button'
-    botao.textContent = texto
-    _ui_hoverBotao(botao, corBase, corHover)
-    botao.addEventListener('click', () => input.click())
-
-    input.addEventListener('change', () => {
-        const arquivo = input.files?.[0]
-        if (arquivo && typeof acao === 'function') acao(arquivo)
-        input.value = '' // permite escolher o mesmo arquivo de novo depois, se precisar
-    })
-
-    wrapper.appendChild(botao)
-    wrapper.appendChild(input)
-    _ui_inserir(wrapper, ancestral)
-    return wrapper
-}
 
 // ── criaMenuSuspenso ─────────────────────────────────────────
 //
@@ -574,10 +537,46 @@ function criaMenuSuspenso({ id, opcoes = [], valorInicial, ancestral, cor = 'pri
 }
 
 
-// ── criaListaItens ───────────────────────────────────────────
+// ── criaInputArquivo ─────────────────────────────────────────
+//
+// Botão estilizado que abre o seletor de arquivo do sistema.
+// acao(arquivo) é chamada com o File escolhido assim que o usuário
+// seleciona algo (não precisa de botão "confirmar" separado).
+//
+// criaInputArquivo({ id, texto, ancestral, aceita, cor, acao })
+//   aceita: string tipo '.json' (mesmo formato do atributo accept)
+
+function criaInputArquivo({ id, texto = 'Escolher arquivo', ancestral, aceita = '', cor = 'secundaria', acao }) {
+    const { cor: corBase, corHover, texto: corTexto } = _ui_resolveCor(cor)
+
+    const wrapper = _ui_el('div', {})
+    wrapper.id = id
+
+    const input = _ui_el('input', { display: 'none' })
+    input.type = 'file'
+    if (aceita) input.accept = aceita
+
+    const botao = _ui_el('button', _ui_estiloBotao(corBase, corHover, corTexto))
+    botao.type = 'button'
+    botao.textContent = texto
+    _ui_hoverBotao(botao, corBase, corHover)
+    botao.addEventListener('click', () => input.click())
+
+    input.addEventListener('change', () => {
+        const arquivo = input.files?.[0]
+        if (arquivo && typeof acao === 'function') acao(arquivo)
+        input.value = '' // permite escolher o mesmo arquivo de novo depois, se precisar
+    })
+
+    wrapper.appendChild(botao)
+    wrapper.appendChild(input)
+    _ui_inserir(wrapper, ancestral)
+    return wrapper
+}
 //
 // Lista simples de itens de texto, cada um com um botão de remover.
 // Útil para listas editáveis (ex.: páginas monitoradas).
+// ── criaListaItens ───────────────────────────────────────────
 //
 // criaListaItens({ id, itens, ancestral, aoRemover })
 //   itens: array de strings
