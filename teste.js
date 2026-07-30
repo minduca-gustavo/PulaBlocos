@@ -9,7 +9,7 @@ async function atualiza() {
         {"nome":"Direito Previdenciário", "acertos":"107", "total":"144"},
         {"nome":"Comércio Internacional", "acertos":"41", "total":"76","label":{"nome":"Legislação Aduaneira", "acertos":"62", "total":"103"}},
         {"nome":"Língua Portuguesa", "acertos":"145", "total":"159"},
-        {"nome":"Direito Tributário", "acertos":"77", "total":"110", "label":{"nome":"Direito Tributário","acertos":"285", "total":"383"}},
+        {"nome":"Direito Tributário", "acertos":"77", "total":"110", "label":{"nome":"Legislação Tributária","acertos":"285", "total":"383"}},
         {"nome":"Língua Inglesa", "acertos":"142", "total":"174"},
         {"nome":"Estatística", "acertos":"20", "total":"32"},
         {"nome":"Auditoria", "acertos":"77", "total":"116"},
