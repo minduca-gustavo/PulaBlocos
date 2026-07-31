@@ -344,6 +344,71 @@ function criaCaixaDeAviso({ id, texto, tipo = 'info', ancestral }) {
 }
 
 
+// ── criaNotificacao ──────────────────────────────────────────
+//
+// Toast simples pra confirmar que uma ação deu certo (ou não). Não
+// precisa de id nem ancestral — se anexa sozinho num canto fixo da
+// tela e some depois de um tempo. Várias chamadas empilham (a mais
+// recente embaixo). Clicar nele fecha na hora.
+//
+// criaNotificacao({ texto, tipo, duracao })
+//   tipo: 'info' (padrão) | 'sucesso' | 'erro'
+//   duracao: ms até sumir sozinho (padrão 3000). 0 = não some sozinho.
+
+function _ui_containerNotificacoes() {
+    let container = document.getElementById('_ui_notificacoes')
+    if (container) return container
+    container = _ui_el('div', {
+        position: 'fixed', bottom: '16px', right: '16px', zIndex: '2147483647',
+        display: 'flex', flexDirection: 'column', gap: '8px',
+        maxWidth: '320px', pointerEvents: 'none',
+    })
+    container.id = '_ui_notificacoes'
+    document.body.appendChild(container)
+    return container
+}
+
+function criaNotificacao({ texto, tipo = 'info', duracao = 3000 }) {
+    const cores = {
+        info:    UI_CORES.azul,
+        sucesso: UI_CORES.sucesso,
+        erro:    UI_CORES.erro,
+    }
+    const fundo = cores[tipo] || cores.info
+    const container = _ui_containerNotificacoes()
+
+    const el = _ui_el('div', {
+        background: fundo, color: UI_CORES.branco,
+        borderRadius: '6px', padding: '10px 14px', fontSize: '12px', fontWeight: '600',
+        fontFamily: UI_FONTE, lineHeight: '1.4', boxShadow: '0 4px 12px rgba(22,66,91,0.25)',
+        pointerEvents: 'auto', cursor: 'pointer',
+        opacity: '0', transform: 'translateY(8px)', transition: 'opacity 0.2s, transform 0.2s',
+        overflowWrap: 'break-word',
+    })
+    el.textContent = texto
+    container.appendChild(el)
+
+    requestAnimationFrame(() => {
+        el.style.opacity = '1'
+        el.style.transform = 'translateY(0)'
+    })
+
+    let jaSumindo = false
+    function remover() {
+        if (jaSumindo) return
+        jaSumindo = true
+        el.style.opacity = '0'
+        el.style.transform = 'translateY(8px)'
+        setTimeout(() => el.remove(), 200)
+    }
+
+    el.addEventListener('click', remover)
+    if (duracao > 0) setTimeout(remover, duracao)
+
+    return el
+}
+
+
 // ── criaBotao ────────────────────────────────────────────────
 //
 // Botão único e configurável (substitui criaBotaoAzul/Laranja).

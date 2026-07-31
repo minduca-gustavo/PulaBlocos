@@ -14,6 +14,10 @@ PAGINAS = {
             texto: 'Próximo Bloco',
             materiaOuAssunto: 'bloco'
         },
+        registrar: {
+            texto: 'Registrar estatística',
+            acao: 'registrar'
+        },
         facilCertoErrado: {
             url: 'https://questoes.grancursosonline.com.br/aluno/filtro/concursos?tiposProva=1&resolucao=NAORESOLVI&tipo=certo+e+errado&dificuldade=2%2C1&desatualizada=0&anulada=0',
             texto: 'Fácil, certo e errado',
@@ -55,6 +59,15 @@ function relatar(rotulo = '', conteudo = '', tipo = ''){
 	let s2  = base + 'background:' + cor + ';margin-left:3px;'
 	if(!conteudo) console.log(msg, pfx, s2)
 	else          console.log(msg, pfx, s2, conteudo)
+}
+
+// Mostra uma notificação visual (toast, some sozinha) E loga no console —
+// pra confirmar que uma ação deu certo sem precisar abrir o DevTools.
+// tipo: 'sucesso' | 'erro' | 'info' (padrão)
+function avisar(texto, tipo = 'info') {
+    let corConsole = { sucesso: 'verde', erro: 'vermelho', info: 'azul' }[tipo] || 'azul'
+    relatar(texto, '', corConsole)
+    if (typeof criaNotificacao === 'function') criaNotificacao({ texto, tipo })
 }
 
 async function bFetch(url){
@@ -142,6 +155,7 @@ async function incluirMaterias(materiasTexto) {
     }
 
     await armazenar({ pulaBlocos: dados })
+    avisar(materiasConsultar.length + ' matéria(s) incluída(s)/atualizada(s)', 'sucesso')
     relatar('incluirMaterias concluído', dados, 'verde')
 }
 
@@ -160,6 +174,7 @@ async function excluirMaterias(materiasTexto) {
     dados.ordem = (dados.ordem || []).filter(o => !materiasRemover.includes(normalizar(o.materia)))
 
     await armazenar({ pulaBlocos: dados })
+    avisar(materiasRemover.length + ' matéria(s) excluída(s)', 'sucesso')
     relatar('excluirMaterias concluído', dados, 'vermelho')
 }
 

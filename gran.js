@@ -13,9 +13,10 @@ async function iniciaGran() {
         gap: '50px',
         rowColumn: 'row'
     })
-    criaTitulo({ id: 'pulaBlocos_materiaAtual', texto: 'Matéria atual: —', ancestral: 'pulaBlocos_div_titulo' })
+    criaTitulo({ id: 'pulaBlocos_materiaAtual', texto: 'Matéria: —', ancestral: 'pulaBlocos_div_titulo' })
     criaTitulo({ id: 'pulaBlocos_assuntoAtual', texto: 'Assunto atual: —', ancestral: 'pulaBlocos_div_titulo' })
     await atualizarCabecalho()
+    await renderizarSelecao()
 
     let div = criaDiv({
         id: 'pulaBlocos_div',
@@ -31,7 +32,8 @@ async function iniciaGran() {
     let mapaFuncoes = {
         gerenciar,
         alteraTipo,
-        avancar
+        avancar,
+        registrar
     }
     for (let [nomeTipo, dados] of Object.entries(PAGINAS.tiposDeBotoes)) {
         //console.log(nomeTipo, dados)
@@ -146,26 +148,26 @@ async function iniciaGran() {
     // matéria-base (pra não rodar duas vezes) e no fim de pulaBlocos.ordem.
     async function criarLabel(seletorNome, seletorInput) {
         let nomeLabel = (document.querySelector(seletorNome)?.value || '').trim()
-        if (!nomeLabel) { relatar('nome do label vazio', '', 'vermelho'); return }
+        if (!nomeLabel) { avisar('digite um nome pro label', 'erro'); return }
 
         let elemento = document.querySelector(seletorInput)
         let linhas = elemento.value.split('\n').map(d => d.trim()).filter(d => /^\d+(\.\d+)*\./.test(d))
-        if (!linhas.length) { relatar('nada colado pra virar label', '', 'vermelho'); return }
+        if (!linhas.length) { avisar('nada colado pra virar label', 'erro'); return }
 
         let dados = await obterArmazenamento('pulaBlocos')
         if (typeof dados.atual === 'string') dados.atual = { materia: dados.atual, label: null }
         let indiceMateria = dados.materias.findIndex(d => normalizar(d.nome) == normalizar(dados?.atual?.materia))
-        if (indiceMateria < 0) { relatar('matéria atual não encontrada em pulaBlocos', dados?.atual, 'vermelho'); return }
+        if (indiceMateria < 0) { avisar('matéria atual não encontrada em pulaBlocos', 'erro'); return }
         let materia = dados.materias[indiceMateria]
 
         if ((materia.labels || []).some(l => normalizar(l.nome) === normalizar(nomeLabel))) {
-            relatar('já existe um label com esse nome nessa matéria', nomeLabel, 'vermelho')
+            avisar('já existe um label com esse nome nessa matéria', 'erro')
             return
         }
 
         let assuntosEncontrados = linhas.map(linha => assuntoDaLinha(materia, linha)).filter(Boolean)
         if (!assuntosEncontrados.length) {
-            relatar('nenhuma linha colada bateu com a árvore dessa matéria', linhas, 'vermelho')
+            avisar('nenhuma linha colada bateu com a árvore dessa matéria', 'erro')
             return
         }
 
@@ -188,7 +190,7 @@ async function iniciaGran() {
         await armazenar({ pulaBlocos: dados })
         elemento.value = ''
         document.querySelector(seletorNome).value = ''
-        relatar('label criado', nomeLabel, 'verde')
+        avisar('label "' + nomeLabel + '" criado (' + assuntosEncontrados.length + ' assuntos)', 'sucesso')
     }
 
     // Some com o label inteiro (blocos/excluir dele não migram, só somem) e
@@ -286,10 +288,246 @@ async function iniciaGran() {
         let nomeMateria = materia?.nome || '—'
         if (dados.atual?.label) nomeMateria += ' / ' + dados.atual.label
 
+        function textoEstatistica(acertos, total) {
+            if (!total) return '' // 'se houver' — sem registro ainda, não mostra nada
+            let percentual = Math.round((acertos / total) * 100)
+            return ` — ${acertos}/${total} (${percentual}%)`
+        }
+
+        // soma tudo que já foi registrado nessa trilha, incluindo o ponto
+        // de partida (histórico manual/importado) — mesma lógica do painel
+        let totalTrilha = estatisticaTrilha(materia, trilha)
+        let registroBloco = trilha?.desempenho?.[trilha?.posicaoAtual]
+
         let elMateria = document.getElementById('pulaBlocos_materiaAtual')
         let elAssunto = document.getElementById('pulaBlocos_assuntoAtual')
-        if (elMateria) elMateria.textContent = 'Matéria atual: ' + nomeMateria
-        if (elAssunto) elAssunto.textContent = 'Assunto atual: ' + (assuntoAtual?.nome || '—')
+        if (elMateria) elMateria.textContent = 'Matéria: ' + nomeMateria + textoEstatistica(totalTrilha.acertos, totalTrilha.total)
+        if (elAssunto) elAssunto.textContent = 'Assunto atual: ' + (assuntoAtual?.nome || '—') + textoEstatistica(registroBloco?.acertos || 0, registroBloco?.total || 0)
+    }
+
+    // ── acertos/erros por unidade (bloco/assunto) ──────────────────
+    //
+    // Conta certas/erradas visíveis na página agora (mesma detecção do seu
+    // script de Tampermonkey). 'baselinePlacar' guarda o que já foi
+    // registrado NESSE carregamento de página — reseta sozinho a cada
+    // navegação (é uma variável local de iniciaGran, roda de novo a cada
+    // vez que a página carrega). Só o delta (o que apareceu de novo desde
+    // o último registro) entra na conta, então clicar em "Registrar"
+    // mais de uma vez na mesma página não conta as mesmas respostas de novo.
+    let baselinePlacar = { certas: 0, erradas: 0 }
+
+    function contarPlacarPagina() {
+        let certas = 0, erradas = 0
+        document.querySelectorAll('span.text-success').forEach(el => { if (el.innerText.trim() === 'Certa!') certas++ })
+        document.querySelectorAll('span.text-error').forEach(el => { if (el.innerText.trim() === 'Errada!') erradas++ })
+        return { certas, erradas }
+    }
+
+    async function registrar() {
+        let atual = contarPlacarPagina()
+        let deltaCertas = Math.max(0, atual.certas - baselinePlacar.certas)
+        let deltaErradas = Math.max(0, atual.erradas - baselinePlacar.erradas)
+        baselinePlacar = atual
+        if (deltaCertas === 0 && deltaErradas === 0) return
+
+        let dados = await obterArmazenamento('pulaBlocos') || {}
+        if (typeof dados.atual === 'string') dados.atual = { materia: dados.atual, label: null }
+        let resolvido = dados.atual ? resolverTrilha(dados, dados.atual) : null
+        if (!resolvido) { relatar('sem trilha atual pra registrar', '', 'vermelho'); return }
+        let { trilha } = resolvido
+        if (trilha.posicaoAtual == null) { relatar('sem posição atual pra registrar', '', 'vermelho'); return }
+
+        if (!trilha.desempenho) trilha.desempenho = {}
+        let registro = trilha.desempenho[trilha.posicaoAtual] || { acertos: 0, total: 0 }
+        registro.acertos += deltaCertas
+        registro.total += deltaCertas + deltaErradas
+        trilha.desempenho[trilha.posicaoAtual] = registro
+
+        await armazenar({ pulaBlocos: dados })
+        await atualizarCabecalho()
+        relatar('registrado', { deltaCertas, deltaErradas, registro }, 'verde')
+    }
+
+    // ── seleção rápida (2 dropdowns + botão Estatísticas) ───────────
+
+    function corPorPercentual(acertos, total) {
+        if (!total) return '#8a8f98' // cinza — sem registro ainda
+        let percentual = (acertos / total) * 100
+        if (percentual < 65) return '#c0392b'
+        if (percentual < 80) return '#e0a800'
+        return '#2e7d32'
+    }
+
+    // soma tudo que já foi registrado numa trilha, incluindo o histórico
+    // manual (materia.acertos/total) quando for a trilha-base
+    function estatisticaTrilha(materia, trilha) {
+        // acertos/total na própria trilha (matéria-base OU label) é o
+        // ponto de partida — histórico de antes do registrar() existir,
+        // ou importado manualmente. Cada trilha carrega o seu.
+        let baseAcertos = parseInt(trilha?.acertos) || 0
+        let baseTotal = parseInt(trilha?.total) || 0
+        let total = { acertos: baseAcertos, total: baseTotal }
+        for (let registro of Object.values(trilha?.desempenho || {})) {
+            total.acertos += registro.acertos
+            total.total += registro.total
+        }
+        return total
+    }
+
+    // Texto de uma unidade (bloco ou assunto avulso) pra exibir em listas.
+    function textoUnidade(trilha, unidade) {
+        if (unidade.ids.length > 1) {
+            let blocoOriginal = (trilha.blocos || []).find(b => idDaLinha(trilha, b[0]) === unidade.ids[0])
+            return blocoOriginal ? textoFaixa('Bloco', blocoOriginal) : ('Bloco (' + unidade.ids.length + ' assuntos)')
+        }
+        let assunto = (trilha.assuntos || []).find(a => a.id === unidade.ultimoId)
+        return assunto ? assunto.indice.replace(/^\d+\./,'') + ' ' + assunto.nome : ('Assunto ' + unidade.ultimoId)
+    }
+
+    // 2 dropdowns (trocar matéria/label, trocar bloco) + botão que abre o
+    // painel de estatísticas. Selecionar em qualquer um já navega — não
+    // precisa clicar em "Atual" depois.
+    async function renderizarSelecao() {
+        let antigo = document.getElementById('pulaBlocos_div_selecao')
+        if (antigo) antigo.remove()
+
+        let divSelecao = criaDiv({ id: 'pulaBlocos_div_selecao', ancestral: '.questoes-navbar', gap: '8px', rowColumn: 'row' })
+
+        let dados = await obterArmazenamento('pulaBlocos') || {}
+        if (typeof dados.atual === 'string') dados.atual = { materia: dados.atual, label: null }
+        let ordem = dados.ordem?.length ? dados.ordem : (dados.materias || []).map(m => ({ materia: m.nome, label: null }))
+
+        let opcoesMateria = ordem.map(o => ({
+            valor: o.materia + '::' + (o.label || ''),
+            texto: o.label ? (o.materia + ' / ' + o.label) : o.materia,
+        }))
+        let valorAtualMateria = (dados.atual?.materia || '') + '::' + (dados.atual?.label || '')
+
+        criaMenuSuspenso({
+            id: 'pulaBlocos_selecaoMateria',
+            ancestral: 'pulaBlocos_div_selecao',
+            opcoes: opcoesMateria,
+            valorInicial: valorAtualMateria,
+            acao: async (valor) => {
+                let [materiaEscolhida, labelEscolhido] = valor.split('::')
+                let dadosAtuais = await obterArmazenamento('pulaBlocos')
+                dadosAtuais.atual = { materia: materiaEscolhida, label: labelEscolhido || null }
+                await armazenar({ pulaBlocos: dadosAtuais })
+                await avancar('atuais')
+                await renderizarSelecao()
+            },
+        })
+
+        let resolvido = dados.atual ? resolverTrilha(dados, dados.atual) : null
+        let unidadesAtual = resolvido ? montarUnidades(resolvido.trilha) : []
+        let opcoesBloco = unidadesAtual.map(u => ({
+            valor: String(u.ultimoId),
+            texto: resolvido ? textoUnidade(resolvido.trilha, u) : '',
+        }))
+        let valorAtualBloco = String(resolvido?.trilha?.posicaoAtual ?? (unidadesAtual[0]?.ultimoId ?? ''))
+
+        criaMenuSuspenso({
+            id: 'pulaBlocos_selecaoBloco',
+            ancestral: 'pulaBlocos_div_selecao',
+            opcoes: opcoesBloco,
+            valorInicial: valorAtualBloco,
+            acao: async (valor) => {
+                let dadosAtuais = await obterArmazenamento('pulaBlocos')
+                if (typeof dadosAtuais.atual === 'string') dadosAtuais.atual = { materia: dadosAtuais.atual, label: null }
+                let resolvidoAtual = resolverTrilha(dadosAtuais, dadosAtuais.atual)
+                if (!resolvidoAtual) return
+                resolvidoAtual.trilha.posicaoAtual = Number(valor)
+                await armazenar({ pulaBlocos: dadosAtuais })
+                await avancar('atuais')
+            },
+        })
+
+        criaBotao({
+            id: 'pulaBlocos_botaoEstatisticas',
+            texto: 'Estatísticas',
+            cor: 'secundaria',
+            ancestral: 'pulaBlocos_div_selecao',
+            acao: abrirPainelEstatisticas,
+        })
+    }
+
+    // Painel flutuante com todas as trilhas (pulaBlocos.ordem — matérias e
+    // labels como entradas independentes, sem aninhar label dentro de
+    // matéria). Cada linha mostra o total (cor por faixa de %); clicar
+    // expande a lista de unidades dela — montada só na hora, não ao abrir
+    // o painel, pra não pesar em matérias com muito assunto solto.
+    async function abrirPainelEstatisticas() {
+        let existente = document.getElementById('pulaBlocos_painelEstatisticas')
+        if (existente) { existente.remove(); return }
+
+        let painel = await criaDivFlutuante({
+            id: 'pulaBlocos_painelEstatisticas',
+            titulo: 'Estatísticas',
+            largura: '360px',
+        })
+        let corpoId = painel.id + '-corpo'
+
+        let dados = await obterArmazenamento('pulaBlocos') || {}
+        let ordem = dados.ordem?.length ? dados.ordem : (dados.materias || []).map(m => ({ materia: m.nome, label: null }))
+
+        for (let entrada of ordem) {
+            let materia = (dados.materias || []).find(m => m.nome === entrada.materia)
+            if (!materia) continue
+            let trilha = entrada.label ? (materia.labels || []).find(l => l.nome === entrada.label) : materia
+            if (!trilha) continue
+            let nomeExibicao = entrada.label ? (entrada.materia + ' / ' + entrada.label) : entrada.materia
+            renderizarLinhaEstatistica(materia, trilha, nomeExibicao, corpoId)
+        }
+    }
+
+    function renderizarLinhaEstatistica(materia, trilha, nomeExibicao, ancestralId) {
+        let est = estatisticaTrilha(materia, trilha)
+        let cor = corPorPercentual(est.acertos, est.total)
+        let textoStats = est.total
+            ? ` — ${est.acertos}/${est.total} (${Math.round(est.acertos / est.total * 100)}%)`
+            : ' — sem registro'
+
+        let idLinha = 'pulaBlocos_estat_' + slug(nomeExibicao)
+        let idCorpo = idLinha + '_corpo'
+
+        criaBotao({
+            id: idLinha,
+            texto: nomeExibicao + textoStats,
+            cor: cor,
+            ancestral: ancestralId,
+            acao: () => alternarCorpoEstatistica(idCorpo, trilha),
+        })
+
+        let corpo = criaDiv({ id: idCorpo, ancestral: ancestralId, gap: '3px' })
+        corpo.style.display = 'none'
+        corpo.dataset.carregado = '0'
+    }
+
+    function alternarCorpoEstatistica(idCorpo, trilha) {
+        let el = document.getElementById(idCorpo)
+        if (!el) return
+
+        if (el.style.display === 'none') {
+            if (el.dataset.carregado !== '1') {
+                let unidades = montarUnidades(trilha)
+                unidades.forEach(u => {
+                    let e = trilha.desempenho?.[u.ultimoId]
+                    let c = corPorPercentual(e?.acertos || 0, e?.total || 0)
+                    let t = textoUnidade(trilha, u) + (e?.total
+                        ? ` — ${e.acertos}/${e.total} (${Math.round(e.acertos / e.total * 100)}%)`
+                        : ' — sem registro')
+                    let linha = criaTexto({ id: idCorpo + '_' + u.ultimoId, texto: t, ancestral: idCorpo })
+                    linha.style.color = c
+                    linha.style.paddingLeft = '10px'
+                    linha.style.fontWeight = '600'
+                })
+                el.dataset.carregado = '1'
+            }
+            el.style.display = 'flex'
+            el.style.flexDirection = 'column'
+        } else {
+            el.style.display = 'none'
+        }
     }
 
     // Monta a URL do modo atualmente selecionado (pulaBlocos.modo) e navega
@@ -314,7 +552,10 @@ async function iniciaGran() {
 
     // Chamada pelos botões 'atual' / 'proximaMateria' / 'proximoBloco' —
     // avança a posição (ou não, se for 'atuais') e navega no modo vigente.
+    // 'bloco'/'materia' registram o placar da página ANTES de avançar (pra
+    // creditar na unidade que está sendo deixada, não na próxima).
     async function avancar(direcao) {
+        if (direcao === 'bloco' || direcao === 'materia') await registrar()
         let {idMateria, blocoArray} = await assuntos(direcao)
         await atualizarCabecalho()
         await navegarParaAssunto(idMateria, blocoArray)
@@ -667,6 +908,7 @@ Direito Constitucional`
                 [...conjuntoEsperado].every(item => conjuntoNovo.has(item))
 
             if (!mesmoConjunto) {
+                avisar('ordem inválida — sobrou, faltou ou repetiu algo, nada foi salvo', 'erro')
                 relatar('ordem inválida — sobrou, faltou ou repetiu algo, nada foi salvo', linhasNovas, 'vermelho')
                 return
             }
@@ -676,6 +918,7 @@ Direito Constitucional`
             elemento.value = ''
             botao.textContent = 'Reordenar'
             botao.dataset.modo = ''
+            avisar('ordem salva', 'sucesso')
             relatar('ordem salva', novaOrdem, 'verde')
         }
 
@@ -762,6 +1005,7 @@ Direito Constitucional`
                 if (!trilha?.[tipo]) return
                 trilha[tipo].splice(indice, 1)
                 await armazenar({ pulaBlocos: dadosAtuais })
+                avisar((tipo === 'blocos' ? 'bloco dissolvido' : 'restaurado pra rotação'), 'sucesso')
                 await editarBlocos(materiaNome)
             }
 
@@ -772,6 +1016,7 @@ Direito Constitucional`
                 if (!materiaAtual) return
                 removerLabel(dadosAtuais, materiaAtual, nomeLabel)
                 await armazenar({ pulaBlocos: dadosAtuais })
+                avisar('label "' + nomeLabel + '" excluído', 'sucesso')
                 await editarBlocos(materiaNome)
             }
 
@@ -783,6 +1028,7 @@ Direito Constitucional`
                     : 'Excluir ' + selecionados.size + ' item(ns) selecionado(s)?'
                 if (!confirm(mensagem)) return
 
+                let totalSelecionados = selecionados.size
                 let dadosAtuais = await obterArmazenamento('pulaBlocos')
                 let materiaAtual = dadosAtuais.materias.find(m => m.nome === materiaNome)
                 if (!materiaAtual) return
@@ -811,6 +1057,7 @@ Direito Constitucional`
                 removerLote('excluir')
 
                 await armazenar({ pulaBlocos: dadosAtuais })
+                avisar(totalSelecionados + ' item(ns) excluído(s)', 'sucesso')
                 await editarBlocos(materiaNome)
             }
 
@@ -843,7 +1090,7 @@ Direito Constitucional`
             relatar(conteudo)
             let testadas = conteudo.split('\n').map(d=> d.trim()).filter(d=> /^\d+(\.\d+)*\./.test(d));
             if (testadas.length == 0){
-                //rotina retorno
+                avisar('nada colado que pareça um assunto (precisa começar com número + ponto)', 'erro')
                 return
             }
             relatar('359: ', testadas)
@@ -851,6 +1098,7 @@ Direito Constitucional`
             if (typeof dados.atual === 'string') dados.atual = { materia: dados.atual, label: null }
             let indice = dados.materias.findIndex(d=> normalizar(d.nome) == normalizar(dados?.atual?.materia))
             if (indice < 0) {
+                avisar('matéria atual não encontrada em pulaBlocos', 'erro')
                 relatar('matéria atual não encontrada em pulaBlocos', dados?.atual, 'vermelho')
                 return
             }
@@ -861,6 +1109,7 @@ Direito Constitucional`
             //blocos.push(materia.assuntos.filter(d=> d.indice.replace(/\d+\./,'') + ' ' + d.nome == materia.assunto))
             relatar ('362: ', blocos)
             await armazenar({pulaBlocos: dados})
+            avisar((acao === 'blocos' ? 'bloco salvo' : 'excluído da rodagem') + ' (' + testadas.length + ' assuntos)', 'sucesso')
             //let materiaAtual = estudadas.findIndex(d => d.nome == materiaAtualNome) || null
             //relatar ('362: ', materia)
             ////let blocos = []
