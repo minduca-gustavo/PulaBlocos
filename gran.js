@@ -66,15 +66,33 @@ async function iniciaGran() {
     // vira unidade — some da sequência inteiramente.
     // 'trilha' pode ser a própria matéria (trilha-base) ou um label dela —
     // as duas têm a mesma forma: assuntos/blocos/excluir/posicaoAtual.
-    function idDaLinha(trilha, linha) {
+    function assuntoDaLinha(trilha, linha) {
         let alvo = linha.trim()
         let assuntos = trilha.assuntos || []
         // tenta igual primeiro; se não bater, tira o primeiro segmento do
         // índice (ex.: "48.6.4.2.10." → "6.4.2.10.") — é assim que o índice
         // aparece no site, sem esse prefixo que só existe na árvore da API
-        let assunto = assuntos.find(a => (a.indice + ' ' + a.nome) === alvo)
+        return assuntos.find(a => (a.indice + ' ' + a.nome) === alvo)
             || assuntos.find(a => (a.indice.replace(/^\d+\./, '') + ' ' + a.nome) === alvo)
-        return assunto?.id
+    }
+
+    function idDaLinha(trilha, linha) {
+        return assuntoDaLinha(trilha, linha)?.id
+    }
+
+    function indiceDaLinha(linha) {
+        return (linha.trim().match(/^\S+/) || [''])[0]
+    }
+
+    function textoFaixa(rotulo, linhas) {
+        if (!linhas?.length) return rotulo
+        let primeiro = indiceDaLinha(linhas[0])
+        let ultimo = indiceDaLinha(linhas[linhas.length - 1])
+        return primeiro === ultimo ? `${rotulo} ${primeiro}` : `${rotulo} ${primeiro} a ${ultimo}`
+    }
+
+    function slug(texto) {
+        return normalizar(texto).replace(/[^a-z0-9]+/g, '_')
     }
 
     function montarUnidades(trilha) {
@@ -120,6 +138,82 @@ async function iniciaGran() {
         let label = (materia.labels || []).find(l => l.nome === atual.label)
         if (!label) return null
         return { materia, trilha: label }
+    }
+
+    // Cola assuntos no textarea, dá um nome, clica: vira uma "matéria dentro
+    // da matéria" — com assuntos copiados (não referência), sua própria
+    // trilha (blocos/excluir/posicaoAtual), e entra no excluir da
+    // matéria-base (pra não rodar duas vezes) e no fim de pulaBlocos.ordem.
+    async function criarLabel(seletorNome, seletorInput) {
+        let nomeLabel = (document.querySelector(seletorNome)?.value || '').trim()
+        if (!nomeLabel) { relatar('nome do label vazio', '', 'vermelho'); return }
+
+        let elemento = document.querySelector(seletorInput)
+        let linhas = elemento.value.split('\n').map(d => d.trim()).filter(d => /^\d+(\.\d+)*\./.test(d))
+        if (!linhas.length) { relatar('nada colado pra virar label', '', 'vermelho'); return }
+
+        let dados = await obterArmazenamento('pulaBlocos')
+        if (typeof dados.atual === 'string') dados.atual = { materia: dados.atual, label: null }
+        let indiceMateria = dados.materias.findIndex(d => normalizar(d.nome) == normalizar(dados?.atual?.materia))
+        if (indiceMateria < 0) { relatar('matéria atual não encontrada em pulaBlocos', dados?.atual, 'vermelho'); return }
+        let materia = dados.materias[indiceMateria]
+
+        if ((materia.labels || []).some(l => normalizar(l.nome) === normalizar(nomeLabel))) {
+            relatar('já existe um label com esse nome nessa matéria', nomeLabel, 'vermelho')
+            return
+        }
+
+        let assuntosEncontrados = linhas.map(linha => assuntoDaLinha(materia, linha)).filter(Boolean)
+        if (!assuntosEncontrados.length) {
+            relatar('nenhuma linha colada bateu com a árvore dessa matéria', linhas, 'vermelho')
+            return
+        }
+
+        if (!materia.labels) materia.labels = []
+        materia.labels.push({
+            nome: nomeLabel,
+            assuntos: assuntosEncontrados, // cópia, não referência
+            blocos: [],
+            excluir: [],
+            posicaoAtual: undefined,
+            linhasOriginais: linhas, // texto exato colado — usado pra achar/desfazer sem ambiguidade depois
+        })
+
+        if (!materia.excluir) materia.excluir = []
+        materia.excluir.push(linhas)
+
+        if (!dados.ordem) dados.ordem = []
+        dados.ordem.push({ materia: materia.nome, label: nomeLabel })
+
+        await armazenar({ pulaBlocos: dados })
+        elemento.value = ''
+        document.querySelector(seletorNome).value = ''
+        relatar('label criado', nomeLabel, 'verde')
+    }
+
+    // Some com o label inteiro (blocos/excluir dele não migram, só somem) e
+    // devolve os assuntos dele pra rotação da matéria-base, tirando de
+    // materia.excluir exatamente o bloco criado junto (casado por texto
+    // original, não reconstruído — evita qualquer ambiguidade de índice).
+    function removerLabel(dados, materia, nomeLabel) {
+        let idxLabel = (materia.labels || []).findIndex(l => l.nome === nomeLabel)
+        if (idxLabel < 0) return
+        let label = materia.labels[idxLabel]
+
+        if (label.linhasOriginais?.length) {
+            let alvo = label.linhasOriginais.map(l => l.trim())
+            let posicao = (materia.excluir || []).findIndex(bloco =>
+                bloco.length === alvo.length && bloco.every((linha, i) => linha.trim() === alvo[i])
+            )
+            if (posicao >= 0) materia.excluir.splice(posicao, 1)
+        }
+
+        materia.labels.splice(idxLabel, 1)
+        dados.ordem = (dados.ordem || []).filter(o => !(o.materia === materia.nome && o.label === nomeLabel))
+
+        if (dados.atual?.materia === materia.nome && dados.atual?.label === nomeLabel) {
+            dados.atual = { materia: materia.nome, label: null }
+        }
     }
 
     // direcao: 'materia' (pula pra próxima matéria/label na lista de ordem)
@@ -364,6 +458,30 @@ async function iniciaGran() {
                 coluna: 'botoes'
             },
             {
+                tipo: 'criaInput',
+                id: 'inputNomeLabel',
+                placeholder: 'Nome do label',
+                coluna: 'botoes'
+            },
+            {
+                tipo: 'criaBotao',
+                id: 'criarLabel',
+                acao: 'criarLabel',
+                texto: 'Criar label',
+                cor: '#c98a3e',
+                parametros: ['#pulaBlocos_divGerenciar_inputNomeLabel', '#pulaBlocos_divGerenciar_inputSalvar'],
+                coluna: 'botoes'
+            },
+            {
+                tipo: 'criaBotao',
+                id: 'reordenar',
+                acao: 'reordenar',
+                texto: 'Reordenar',
+                cor: 'secundaria',
+                parametros: ['#pulaBlocos_divGerenciar_inputSalvar'],
+                coluna: 'botoes'
+            },
+            {
                 tipo: 'criaBotao',
                 id: 'salvarDados',
                 acao: 'salvarDados',
@@ -436,6 +554,8 @@ async function iniciaGran() {
             salvarExcluir,
             incluirMaterias,
             excluirMaterias,
+            criarLabel,
+            reordenar,
             atualizaPagina,
             editarBlocos,
             salvarDados,
@@ -504,17 +624,202 @@ Direito Constitucional`
             window.location.reload()
         }
 
-        async function editarBlocos(selecao){
-            //relatar('editarBlocos')
-            //let elemento = document.querySelector(seletor)
-            //relatar(elemento.innerText)
-            relatar(selecao)
+        // 1º clique: joga a ordem atual (matérias+labels intercalados) no
+        // textarea, pra você reorganizar as linhas. 2º clique ("Salvar
+        // Ordem"): valida que o conjunto de linhas é exatamente o mesmo de
+        // antes (nada a mais, nada a menos, sem repetir) e só salva se
+        // bater — senão avisa e não grava nada.
+        async function reordenar(seletorInput) {
+            let botao = document.getElementById('pulaBlocos_divGerenciar_reordenar')
+            let elemento = document.querySelector(seletorInput)
+            if (!botao || !elemento) return
+
             let dados = await obterArmazenamento('pulaBlocos') || {}
-            if (!dados?.materias) return
-            relatar(15)
-            let materia = dados?.materias.find(d => d.nome == selecao.trim())
-            if (!materia?.blocos && !materia?.excluir) return
-            alert('Oi')
+            let ordemAtual = dados.ordem?.length
+                ? dados.ordem
+                : (dados.materias || []).map(m => ({ materia: m.nome, label: null }))
+
+            if (botao.dataset.modo !== 'salvar') {
+                elemento.value = ordemAtual.map(o => o.label ? (o.materia + ' / ' + o.label) : o.materia).join('\n')
+                botao.textContent = 'Salvar Ordem'
+                botao.dataset.modo = 'salvar'
+                return
+            }
+
+            let conjuntoEsperado = new Set(ordemAtual.map(o => normalizar(o.label ? o.materia + ' / ' + o.label : o.materia)))
+            let linhasNovas = elemento.value.split('\n').map(d => d.trim()).filter(Boolean)
+            let novaOrdem = linhasNovas.map(linha => {
+                let partes = linha.split('/').map(p => p.trim())
+                return partes.length > 1 ? { materia: partes[0], label: partes[1] } : { materia: partes[0], label: null }
+            })
+            let conjuntoNovo = new Set(novaOrdem.map(o => normalizar(o.label ? o.materia + ' / ' + o.label : o.materia)))
+
+            let semRepeticao = conjuntoNovo.size === linhasNovas.length
+            let mesmoConjunto = semRepeticao && conjuntoEsperado.size === conjuntoNovo.size &&
+                [...conjuntoEsperado].every(item => conjuntoNovo.has(item))
+
+            if (!mesmoConjunto) {
+                relatar('ordem inválida — sobrou, faltou ou repetiu algo, nada foi salvo', linhasNovas, 'vermelho')
+                return
+            }
+
+            dados.ordem = novaOrdem
+            await armazenar({ pulaBlocos: dados })
+            elemento.value = ''
+            botao.textContent = 'Reordenar'
+            botao.dataset.modo = ''
+            relatar('ordem salva', novaOrdem, 'verde')
+        }
+
+        async function editarBlocos(selecao){
+            let anterior = document.getElementById('pulaBlocos_secao3')
+            if (anterior) anterior.remove()
+
+            let dados = await obterArmazenamento('pulaBlocos') || {}
+            let materiaNome = (selecao || '').trim()
+            let materia = (dados.materias || []).find(d => d.nome == materiaNome)
+            if (!materia) return
+
+            let numeroColunas = 2 // muda aqui pra mais colunas, se precisar
+            let selecionados = new Map() // chave única → descritor {tipo, label, indice}
+
+            let secao3 = criaDiv({
+                id: 'pulaBlocos_secao3',
+                ancestral: 'pulaBlocos_divGerenciar_coluna_editar',
+                gap: '10px'
+            })
+
+            function chave(tipo, nomeLabel, indice) {
+                return [tipo, nomeLabel || '__base__', indice].join('::')
+            }
+
+            function ligarSelecao(idCheckbox, chaveUnica, descritor) {
+                let chk = document.getElementById(idCheckbox)
+                if (!chk) return
+                chk.addEventListener('click', () => {
+                    if (chk.dataset.marcado === '1') selecionados.set(chaveUnica, descritor)
+                    else selecionados.delete(chaveUnica)
+                })
+            }
+
+            function criaGrid(idSufixo) {
+                let grid = criaDiv({ id: 'pulaBlocos_secao3_grid_' + idSufixo, ancestral: secao3.id, gap: '4px', rowColumn: 'row' })
+                grid.style.flexWrap = 'wrap'
+                return grid
+            }
+
+            function renderizarTrilha(trilha, nomeLabel, sufixo) {
+                if (trilha.blocos?.length) {
+                    let grid = criaGrid('blocos_' + sufixo)
+                    trilha.blocos.forEach((bloco, indice) => {
+                        let id = 'pulaBlocos_secao3_bloco_' + sufixo + '_' + indice
+                        let linha = criaBotaoComCheckbox({
+                            id, idCheckbox: id + '_chk',
+                            texto: textoFaixa('Bloco', bloco),
+                            ancestral: grid.id, cor: 'primaria',
+                            acao: () => removerUnico('blocos', nomeLabel, indice),
+                        })
+                        linha.style.width = (100 / numeroColunas) + '%'
+                        ligarSelecao(id + '_chk', chave('blocos', nomeLabel, indice), { tipo: 'blocos', label: nomeLabel, indice })
+                    })
+                }
+                if (trilha.excluir?.length) {
+                    let grid = criaGrid('excluir_' + sufixo)
+                    trilha.excluir.forEach((bloco, indice) => {
+                        let id = 'pulaBlocos_secao3_excluir_' + sufixo + '_' + indice
+                        let linha = criaBotaoComCheckbox({
+                            id, idCheckbox: id + '_chk',
+                            texto: textoFaixa('Excluir', bloco),
+                            ancestral: grid.id, cor: 'erro',
+                            acao: () => removerUnico('excluir', nomeLabel, indice),
+                        })
+                        linha.style.width = (100 / numeroColunas) + '%'
+                        ligarSelecao(id + '_chk', chave('excluir', nomeLabel, indice), { tipo: 'excluir', label: nomeLabel, indice })
+                    })
+                }
+            }
+
+            async function removerUnico(tipo, nomeLabel, indice) {
+                let dadosAtuais = await obterArmazenamento('pulaBlocos')
+                let materiaAtual = dadosAtuais.materias.find(m => m.nome === materiaNome)
+                if (!materiaAtual) return
+                let trilha = nomeLabel ? (materiaAtual.labels || []).find(l => l.nome === nomeLabel) : materiaAtual
+                if (!trilha?.[tipo]) return
+                trilha[tipo].splice(indice, 1)
+                await armazenar({ pulaBlocos: dadosAtuais })
+                await editarBlocos(materiaNome)
+            }
+
+            async function removerLabelInteiro(nomeLabel) {
+                if (!confirm('Excluir o label "' + nomeLabel + '" inteiro? Os assuntos voltam pra rotação normal da matéria.')) return
+                let dadosAtuais = await obterArmazenamento('pulaBlocos')
+                let materiaAtual = dadosAtuais.materias.find(m => m.nome === materiaNome)
+                if (!materiaAtual) return
+                removerLabel(dadosAtuais, materiaAtual, nomeLabel)
+                await armazenar({ pulaBlocos: dadosAtuais })
+                await editarBlocos(materiaNome)
+            }
+
+            async function excluirSelecionados() {
+                if (!selecionados.size) return
+                let temLabel = [...selecionados.values()].some(d => d.tipo === 'label')
+                let mensagem = temLabel
+                    ? 'Isso vai excluir ' + selecionados.size + ' item(ns) selecionado(s), incluindo label(s) inteiro(s). Confirma?'
+                    : 'Excluir ' + selecionados.size + ' item(ns) selecionado(s)?'
+                if (!confirm(mensagem)) return
+
+                let dadosAtuais = await obterArmazenamento('pulaBlocos')
+                let materiaAtual = dadosAtuais.materias.find(m => m.nome === materiaNome)
+                if (!materiaAtual) return
+
+                let porTipo = { blocos: [], excluir: [], label: [] }
+                for (let descritor of selecionados.values()) porTipo[descritor.tipo].push(descritor)
+
+                for (let d of porTipo.label) removerLabel(dadosAtuais, materiaAtual, d.label)
+
+                // remove do maior índice pro menor, pra não desalinhar
+                // posições durante os splices de um mesmo array
+                function removerLote(tipo) {
+                    let porTrilha = new Map()
+                    for (let d of porTipo[tipo]) {
+                        let chaveTrilha = d.label || '__base__'
+                        if (!porTrilha.has(chaveTrilha)) porTrilha.set(chaveTrilha, [])
+                        porTrilha.get(chaveTrilha).push(d.indice)
+                    }
+                    for (let [chaveTrilha, indices] of porTrilha) {
+                        let trilha = chaveTrilha === '__base__' ? materiaAtual : (materiaAtual.labels || []).find(l => l.nome === chaveTrilha)
+                        if (!trilha?.[tipo]) continue
+                        indices.sort((a, b) => b - a).forEach(i => trilha[tipo].splice(i, 1))
+                    }
+                }
+                removerLote('blocos')
+                removerLote('excluir')
+
+                await armazenar({ pulaBlocos: dadosAtuais })
+                await editarBlocos(materiaNome)
+            }
+
+            renderizarTrilha(materia, null, 'base_' + slug(materia.nome))
+
+            for (let label of materia.labels || []) {
+                let idLabel = 'pulaBlocos_secao3_label_' + slug(materia.nome) + '_' + slug(label.nome)
+                criaBotaoComCheckbox({
+                    id: idLabel, idCheckbox: idLabel + '_chk',
+                    texto: 'Label: ' + label.nome,
+                    ancestral: secao3.id, cor: '#c98a3e',
+                    acao: () => removerLabelInteiro(label.nome),
+                })
+                ligarSelecao(idLabel + '_chk', chave('label', label.nome, 0), { tipo: 'label', label: label.nome, indice: 0 })
+                renderizarTrilha(label, label.nome, slug(materia.nome) + '_' + slug(label.nome))
+            }
+
+            criaBotao({
+                id: 'pulaBlocos_secao3_excluirSelecionados',
+                texto: 'Excluir selecionados',
+                cor: 'erro',
+                ancestral: secao3.id,
+                acao: excluirSelecionados,
+            })
         }
         
         async function salvarExcluir(acao, input) {
