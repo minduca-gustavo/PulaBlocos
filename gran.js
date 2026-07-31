@@ -16,6 +16,7 @@ async function iniciaGran() {
     criaTitulo({ id: 'pulaBlocos_materiaAtual', texto: 'Matéria atual: —', ancestral: 'pulaBlocos_div_titulo' })
     criaTitulo({ id: 'pulaBlocos_assuntoAtual', texto: 'Assunto atual: —', ancestral: 'pulaBlocos_div_titulo' })
     await atualizarCabecalho()
+
     let div = criaDiv({
         id: 'pulaBlocos_div',
         ancestral: '.questoes-navbar',
@@ -26,8 +27,6 @@ async function iniciaGran() {
     let modoArmazenado = await obterArmazenamento('pulaBlocos') || {}
     let modo = modoArmazenado.modo || 'facilCertoErrado'
     relatar('modo', modo, 'roxo')
-
-    
 
     let mapaFuncoes = {
         gerenciar,
@@ -65,24 +64,31 @@ async function iniciaGran() {
     // Uma "unidade" é ou um assunto avulso, ou um bloco inteiro (tratado
     // como se fosse um único passo pra fins de navegação). 'excluir' nunca
     // vira unidade — some da sequência inteiramente.
-    function idDaLinha(materia, linha) {
+    // 'trilha' pode ser a própria matéria (trilha-base) ou um label dela —
+    // as duas têm a mesma forma: assuntos/blocos/excluir/posicaoAtual.
+    function idDaLinha(trilha, linha) {
         let alvo = linha.trim()
-        let assunto = (materia.assuntos || []).find(a => (a.indice + ' ' + a.nome) === alvo)
+        let assuntos = trilha.assuntos || []
+        // tenta igual primeiro; se não bater, tira o primeiro segmento do
+        // índice (ex.: "48.6.4.2.10." → "6.4.2.10.") — é assim que o índice
+        // aparece no site, sem esse prefixo que só existe na árvore da API
+        let assunto = assuntos.find(a => (a.indice + ' ' + a.nome) === alvo)
+            || assuntos.find(a => (a.indice.replace(/^\d+\./, '') + ' ' + a.nome) === alvo)
         return assunto?.id
     }
 
-    function montarUnidades(materia) {
+    function montarUnidades(trilha) {
         let excluidos = new Set(
-            (materia.excluir || []).flat().map(linha => idDaLinha(materia, linha)).filter(Boolean)
+            (trilha.excluir || []).flat().map(linha => idDaLinha(trilha, linha)).filter(Boolean)
         )
         let inicioDeBloco = new Map() // id do primeiro assunto do bloco → ids do bloco inteiro
-        ;(materia.blocos || []).forEach(bloco => {
-            let ids = bloco.map(linha => idDaLinha(materia, linha)).filter(Boolean)
+        ;(trilha.blocos || []).forEach(bloco => {
+            let ids = bloco.map(linha => idDaLinha(trilha, linha)).filter(Boolean)
             if (ids.length) inicioDeBloco.set(ids[0], ids)
         })
 
         let unidades = []
-        let assuntosOrdenados = materia.assuntos || []
+        let assuntosOrdenados = trilha.assuntos || []
         let i = 0
         while (i < assuntosOrdenados.length) {
             let assunto = assuntosOrdenados[i]
@@ -99,34 +105,73 @@ async function iniciaGran() {
         return unidades
     }
 
-    // direcao: 'materia' (pula pra próxima matéria) | 'bloco' (avança
-    // dentro da matéria atual) | 'atuais' (fica na mesma unidade, só
-    // reconsulta os ids — usado ao trocar de modo sem avançar posição)
+    // Acha a matéria e resolve a trilha corrente (base ou um label dela) a
+    // partir de dados.atual = { materia, label }. Retorna null se a matéria
+    // não existe mais (foi excluída) ou o label sumiu.
+    function resolverTrilha(dados, atual) {
+        let materia = (dados.materias || []).find(m => m.nome === atual?.materia)
+        if (!materia) return null
+        // migração transparente: storage antigo guardava o assunto atual
+        // como texto solto (materia.assunto), não como id (posicaoAtual)
+        if (materia.posicaoAtual == null && materia.assunto) {
+            materia.posicaoAtual = idDaLinha(materia, materia.assunto)
+        }
+        if (!atual?.label) return { materia, trilha: materia }
+        let label = (materia.labels || []).find(l => l.nome === atual.label)
+        if (!label) return null
+        return { materia, trilha: label }
+    }
+
+    // direcao: 'materia' (pula pra próxima matéria/label na lista de ordem)
+    // | 'bloco' (avança dentro da trilha atual) | 'atuais' (fica na mesma
+    // unidade, só reconsulta os ids — usado ao trocar de modo sem avançar)
     async function assuntos(direcao) {
         let dados = await obterArmazenamento('pulaBlocos')
         if (!dados?.materias?.length) return { idMateria: undefined, blocoArray: [] }
 
-        let indiceMateria = dados.materias.findIndex(m => m.nome === dados.atual)
-        if (indiceMateria < 0) indiceMateria = 0
+        // ordem é a lista mesclada de matérias+labels; se ainda não existe
+        // (storage antigo, ou só uma matéria incluída até agora), cai pra
+        // andar direto em dados.materias, ignorando labels.
+        let ordem = dados.ordem?.length
+            ? dados.ordem
+            : dados.materias.map(m => ({ materia: m.nome, label: null }))
+
+        // migração transparente: storage antigo guardava atual como string
+        // (só o nome da matéria); o formato novo é { materia, label }
+        if (typeof dados.atual === 'string') dados.atual = { materia: dados.atual, label: null }
+        if (!dados.atual) dados.atual = ordem[0]
 
         if (direcao === 'materia') {
-            indiceMateria = (indiceMateria + 1) % dados.materias.length
-            dados.atual = dados.materias[indiceMateria].nome
+            let indiceAtual = ordem.findIndex(o => o.materia === dados.atual.materia && o.label === dados.atual.label)
+            if (indiceAtual < 0) indiceAtual = 0
+            let proximoIndice = (indiceAtual + 1) % ordem.length
+            dados.atual = { materia: ordem[proximoIndice].materia, label: ordem[proximoIndice].label }
         }
 
-        let materia = dados.materias[indiceMateria]
-        let unidades = montarUnidades(materia)
-        if (!unidades.length) return { idMateria: materia.id, blocoArray: [] }
+        let resolvido = resolverTrilha(dados, dados.atual)
+        if (!resolvido) {
+            // matéria/label sumiu (foi excluído) — cai pro primeiro item da ordem
+            dados.atual = { materia: ordem[0].materia, label: ordem[0].label }
+            resolvido = resolverTrilha(dados, dados.atual)
+            if (!resolvido) return { idMateria: undefined, blocoArray: [] }
+        }
+        let { materia, trilha } = resolvido
 
-        let indiceUnidade = unidades.findIndex(u => u.ids.includes(materia.posicaoAtual))
-        if (indiceUnidade < 0) indiceUnidade = 0 // nunca andou nessa matéria ainda
+        let unidades = montarUnidades(trilha)
+        if (!unidades.length) {
+            await armazenar({ pulaBlocos: dados })
+            return { idMateria: materia.id, blocoArray: [] }
+        }
+
+        let indiceUnidade = unidades.findIndex(u => u.ids.includes(trilha.posicaoAtual))
+        if (indiceUnidade < 0) indiceUnidade = 0 // nunca andou nessa trilha ainda
 
         if (direcao === 'bloco') {
             indiceUnidade = (indiceUnidade + 1) % unidades.length
         }
 
         let unidade = unidades[indiceUnidade]
-        materia.posicaoAtual = unidade.ultimoId
+        trilha.posicaoAtual = unidade.ultimoId
         await armazenar({ pulaBlocos: dados })
 
         relatar('assuntos:', { idMateria: materia.id, blocoArray: unidade.ids }, 'roxo')
@@ -138,12 +183,18 @@ async function iniciaGran() {
     // o último do bloco, se a unidade corrente for um bloco.
     async function atualizarCabecalho() {
         let dados = await obterArmazenamento('pulaBlocos') || {}
-        let materia = (dados.materias || []).find(m => m.nome === dados.atual)
-        let assuntoAtual = materia?.assuntos?.find(a => a.id === materia?.posicaoAtual)
+        if (typeof dados.atual === 'string') dados.atual = { materia: dados.atual, label: null }
+        let resolvido = dados.atual ? resolverTrilha(dados, dados.atual) : null
+        let materia = resolvido?.materia
+        let trilha = resolvido?.trilha
+        let assuntoAtual = trilha?.assuntos?.find(a => a.id === trilha?.posicaoAtual)
+
+        let nomeMateria = materia?.nome || '—'
+        if (dados.atual?.label) nomeMateria += ' / ' + dados.atual.label
 
         let elMateria = document.getElementById('pulaBlocos_materiaAtual')
         let elAssunto = document.getElementById('pulaBlocos_assuntoAtual')
-        if (elMateria) elMateria.textContent = 'Matéria atual: ' + (materia?.nome || '—')
+        if (elMateria) elMateria.textContent = 'Matéria atual: ' + nomeMateria
         if (elAssunto) elAssunto.textContent = 'Assunto atual: ' + (assuntoAtual?.nome || '—')
     }
 
@@ -245,17 +296,19 @@ async function iniciaGran() {
         ]
         let token = await obterArmazenamento('blocosTokenGranAuthorization') || []
         relatar('174g: ', token)
-        let tokenObjeto = {
-            id: 'atualizaMaterias',
-            acao: 'atualizaMaterias',
-            texto: 'Atualiza matérias'
+        let botaoIncluir = {
+            id: 'incluirMaterias',
+            acao: 'incluirMaterias',
+            texto: 'Incluir matérias'
         }
         if (token.length == 0){
-            tokenObjeto.id = 'atualizaPagina'
-            tokenObjeto.acao = 'atualizaPagina'
-            tokenObjeto.texto = 'Atualiza página'
+            // sem token capturado ainda, incluir vai dar "Não Autorizado" —
+            // troca o botão por um lembrete de recarregar a página primeiro
+            botaoIncluir.id = 'atualizaPagina'
+            botaoIncluir.acao = 'atualizaPagina'
+            botaoIncluir.texto = 'Atualiza página'
         }
-        relatar('174g: ', tokenObjeto)
+        relatar('174g: ', botaoIncluir)
         let elementosGerenciar = [
             //{
             //    tipo: 'criaTitulo',
@@ -279,9 +332,18 @@ async function iniciaGran() {
             },
             {
                 tipo: 'criaBotao',
-                id: tokenObjeto.id,
-                acao: tokenObjeto.acao,
-                texto: tokenObjeto.texto,
+                id: botaoIncluir.id,
+                acao: botaoIncluir.acao,
+                texto: botaoIncluir.texto,
+                parametros: ['#pulaBlocos_divGerenciar_inputSalvar'],
+                coluna: 'botoes'
+            },
+            {
+                tipo: 'criaBotao',
+                id: 'excluirMaterias',
+                acao: 'excluirMaterias',
+                texto: 'Excluir matérias',
+                cor: 'erro',
                 parametros: ['#pulaBlocos_divGerenciar_inputSalvar'],
                 coluna: 'botoes'
             },
@@ -372,7 +434,8 @@ async function iniciaGran() {
             criaMenuSuspenso,
             criaBotaoComCheckbox,
             salvarExcluir,
-            atualizaMaterias,
+            incluirMaterias,
+            excluirMaterias,
             atualizaPagina,
             editarBlocos,
             salvarDados,
@@ -410,6 +473,7 @@ async function iniciaGran() {
                         valorInicial: m?.valorInicial,
                         aceita: m?.aceita,
                         opcoes: m?.opcoes,
+                        cor: m?.cor,
                         acao: (...preEnvio) => mapaFuncoesGerenciar[acao](...parametros, ...preEnvio)
                     })
                     if (m?.tipo == 'criaInput'){
@@ -464,9 +528,10 @@ Direito Constitucional`
             }
             relatar('359: ', testadas)
             let dados = await obterArmazenamento('pulaBlocos')
-            let indice = dados.materias.findIndex(d=> normalizar(d.nome) == normalizar(materias?.atual))
+            if (typeof dados.atual === 'string') dados.atual = { materia: dados.atual, label: null }
+            let indice = dados.materias.findIndex(d=> normalizar(d.nome) == normalizar(dados?.atual?.materia))
             if (indice < 0) {
-                relatar('matéria atual não encontrada em pulaBlocos', materias?.atual, 'vermelho')
+                relatar('matéria atual não encontrada em pulaBlocos', dados?.atual, 'vermelho')
                 return
             }
             

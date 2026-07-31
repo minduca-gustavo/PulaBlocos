@@ -152,7 +152,7 @@ async function salvarDados() {
         URL.revokeObjectURL(url)
     } catch (erro) {
         console.error('[Pula Blocos] falha ao exportar backup:', erro)
-        alert('Não deu pra gerar o backup: ' + erro.message, 'erro')
+        alert('Não deu pra gerar o backup: ' + erro.message)
     }
 }
 
@@ -170,7 +170,7 @@ async function carregarDados(arquivo) {
         alert('Backup restaurado!')
     } catch (erro) {
         console.error('[Pula Blocos] falha ao importar backup:', erro)
-        alert('Arquivo inválido: ' + erro.message, 'erro')
+        alert('Arquivo inválido: ' + erro.message)
     }
     
     

@@ -65,86 +65,102 @@ async function bFetch(url){
     return resposta
 }
 
-async function atualizaMaterias(materiasTexto) {
-    let dados = await bFetch(PAGINAS.assuntos)
-    //console.log(JSON.stringify(dados))
-    let array = dados?.resultado?.corpo?.data?.rows
-    relatar ('', array)
-    //let materiasEstudadasGit = await buscarGit()
-    //let materiasEstudadas = materiasEstudadasGit?.resultado?.corpo?.materiasEstudadas?.materias
-    //relatar('65: ', materiasEstudadas, 'azul')
-    //return
-    //let materiasEstudadas = [
-    //    'Administração Geral',
-    //    'Administração Pública',
-    //    'Direito Administrativo',
-    //    'Fluência de dados',
-    //    'Raciocínio Lógico',
-    //    'Direito Previdenciário',
-    //    'Comércio Internacional',
-    //    'Língua Portuguesa',
-    //    'Direito Tributário',
-    //    'Língua Inglesa',
-    //    'Estatística',
-    //    'Auditoria',
-    //    'Contabilidade Geral',
-    //    'Economia e Finanças',
-    //    'Direito Constitucional'
-    //]
-    let materiasConsultar = (document.querySelector(materiasTexto)).value.
-        split('\n').map(d=> normalizar(d))
-    
-    //materiasTexto.split('\n').map(d=> normalizar(d))
-    //relatar ('',materias)
-    //return
-    let pulaBlocos = {materias: []}
-    for(let k of array){
-        let materia = {}
-        materia.nome = k?.nome
-        materia.id = k?.id
-        let normalizado = normalizar(k?.nome)
-        relatar('106: ' + normalizado)
-        let estaContido = materiasConsultar.some(j => j == normalizado)
-        if(estaContido){
-            pulaBlocos?.materias.push(materia)
+function mapAssunto(m) {
+    return { assunto_raiz: m?.assunto_raiz, id: m?.id, indice: m?.indice, nome: m?.nome }
+}
+
+function urlArvore(idMateria, pagina) {
+    return 'https://rota-api.grancursosonline.com.br/v3/materia/arvore?perPage=150&page=' + pagina + '&sort=indiceOrdenacao&pages=3&materia=0&comQuestoes=1&raiz%5B%5D=' + idMateria + '&_source%5B%5D=id&_source%5B%5D=nome&_source%5B%5D=assunto_raiz&_source%5B%5D=pai&_source%5B%5D=indice&_source%5B%5D=nivel&_source%5B%5D=filhos'
+}
+
+// Busca a árvore de assuntos inteira de uma matéria (todas as páginas).
+async function buscarArvoreCompleta(idMateria) {
+    let primeira = await bFetch(urlArvore(idMateria, 1))
+    let paginas = primeira?.resultado?.corpo?.data?.pages || 1
+    let assuntos = (primeira?.resultado?.corpo?.data?.rows || []).map(mapAssunto)
+    for (let j = 2; j <= paginas; j++) {
+        let pagina = await bFetch(urlArvore(idMateria, j))
+        assuntos.push(...(pagina?.resultado?.corpo?.data?.rows || []).map(mapAssunto))
+    }
+    return { paginas, assuntos }
+}
+
+// Cola nomes de matérias no textarea e clica: pra cada nome que casar com o
+// catálogo do Gran Cursos —
+//   se a matéria já existe em pulaBlocos: resincroniza só id/paginas/assuntos,
+//   NUNCA toca em blocos/excluir/labels/posicaoAtual/modo/atual/ordem.
+//   se não existe: cria do zero e entra no fim de 'ordem'.
+// Idempotente: rodar de novo com o mesmo nome não faz mal nenhum. Nunca
+// remove nada — remover é trabalho do excluirMaterias.
+async function incluirMaterias(materiasTexto) {
+    let catalogo = await bFetch(PAGINAS.assuntos)
+    let linhasCatalogo = catalogo?.resultado?.corpo?.data?.rows || []
+
+    let materiasConsultar = (document.querySelector(materiasTexto)).value
+        .split('\n').map(d => normalizar(d)).filter(Boolean)
+
+    let dados = await obterArmazenamento('pulaBlocos') || {}
+    if (!dados.materias) dados.materias = []
+    if (!dados.ordem) dados.ordem = []
+
+    // backfill: matéria que já existia em pulaBlocos.materias antes de
+    // 'ordem' existir (ou que por qualquer motivo ficou de fora) entra
+    // agora, preservando a ordem em que já estavam salvas. Roda sempre,
+    // mesmo com o textarea vazio, pra não depender de incluir algo novo
+    // pra consertar o que já existia.
+    for (let m of dados.materias) {
+        let jaEsta = dados.ordem.some(o => o.materia === m.nome && !o.label)
+        if (!jaEsta) dados.ordem.push({ materia: m.nome, label: null })
+    }
+
+    for (let item of linhasCatalogo) {
+        let normalizado = normalizar(item?.nome)
+        if (!materiasConsultar.includes(normalizado)) continue
+
+        relatar('incluirMaterias: processando', item?.nome, 'azul')
+        let arvore = await buscarArvoreCompleta(item.id)
+        let existente = dados.materias.find(m => normalizar(m.nome) === normalizado)
+
+        if (existente) {
+            existente.id = item.id
+            existente.paginas = arvore.paginas
+            existente.assuntos = arvore.assuntos
+        } else {
+            let nova = {
+                nome: item.nome,
+                id: item.id,
+                paginas: arvore.paginas,
+                assuntos: arvore.assuntos,
+                blocos: [],
+                excluir: [],
+                labels: [],
+                posicaoAtual: undefined,
+            }
+            dados.materias.push(nova)
+            dados.ordem.push({ materia: nova.nome, label: null })
         }
     }
-    relatar('pulaBlocos', pulaBlocos, 'azul')
-    let i = 0
-    for (let m of pulaBlocos?.materias){
-        let url = 'https://rota-api.grancursosonline.com.br/v3/materia/arvore?perPage=150&page=1&sort=indiceOrdenacao&pages=3&materia=0&comQuestoes=1&raiz%5B%5D=' + m?.id + '&_source%5B%5D=id&_source%5B%5D=nome&_source%5B%5D=assunto_raiz&_source%5B%5D=pai&_source%5B%5D=indice&_source%5B%5D=nivel&_source%5B%5D=filhos'
-        let materia = await bFetch(url)
-        pulaBlocos.materias[i].paginas = materia?.resultado?.corpo?.data?.pages
-        pulaBlocos.materias[i].assuntos = []
-        for (let m of materia?.resultado?.corpo?.data?.rows){
-            let obj = {
-                assunto_raiz: m?.assunto_raiz,
-                id: m?.id,
-                indice: m?.indice,
-                nome: m?.nome,
-            }
-            pulaBlocos.materias[i].assuntos.push(obj)    
-        }
-        for (let j = 2; j <= pulaBlocos.materias[i].paginas; j++){
-            let url = 'https://rota-api.grancursosonline.com.br/v3/materia/arvore?perPage=150&page=' + j + '&sort=indiceOrdenacao&pages=3&materia=0&comQuestoes=1&raiz%5B%5D=' + m?.id + '&_source%5B%5D=id&_source%5B%5D=nome&_source%5B%5D=assunto_raiz&_source%5B%5D=pai&_source%5B%5D=indice&_source%5B%5D=nivel&_source%5B%5D=filhos'
-            let materia = await bFetch(url)
-            for (let m of materia?.resultado?.corpo?.data?.rows){
-                let obj = {
-                    assunto_raiz: m?.assunto_raiz,
-                    id: m?.id,
-                    indice: m?.indice,
-                    nome: m?.nome,
-                }
-                pulaBlocos.materias[i].assuntos.push(obj)    
-            }
-        }
-        i++
-        //await armazenar ({armazenaTeste: armazenaTeste})
-        
-    }
-    let url = ''
-    await armazenar({pulaBlocos: pulaBlocos})
-    
+
+    await armazenar({ pulaBlocos: dados })
+    relatar('incluirMaterias concluído', dados, 'verde')
+}
+
+// Cola nomes de matérias no textarea e clica: remove cada uma que bater
+// (e os labels dela, que somem junto por fazerem parte do mesmo objeto) de
+// pulaBlocos.materias e de pulaBlocos.ordem. Não mexe em mais nada.
+async function excluirMaterias(materiasTexto) {
+    let materiasRemover = (document.querySelector(materiasTexto)).value
+        .split('\n').map(d => normalizar(d)).filter(Boolean)
+    if (!materiasRemover.length) return
+
+    let dados = await obterArmazenamento('pulaBlocos')
+    if (!dados?.materias?.length) return
+
+    dados.materias = dados.materias.filter(m => !materiasRemover.includes(normalizar(m.nome)))
+    dados.ordem = (dados.ordem || []).filter(o => !materiasRemover.includes(normalizar(o.materia)))
+
+    await armazenar({ pulaBlocos: dados })
+    relatar('excluirMaterias concluído', dados, 'vermelho')
 }
 
 async function buscarGit() {
