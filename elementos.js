@@ -104,6 +104,8 @@ function _ui_estiloBotao(cor, corHover, corTexto) {
         textAlign:    'center',
         transition:   'background 0.15s',
         boxSizing:    'border-box',
+        overflowWrap: 'break-word', // texto sem espaço (ex.: índice comprido) quebra em vez de estourar
+        minWidth:     '0', // permite encolher abaixo da largura do conteúdo quando é flex item
     }
 }
 

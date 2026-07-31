@@ -531,7 +531,7 @@ async function iniciaGran() {
                 id: 'editarTitulo',
                 ancestral: '#pulaBlocos_divGerenciar',
                 texto: 'Matéria:',
-                coluna: 'editar',
+                coluna: 'editarPrimeiraLinha',
             },
             {
                 tipo: 'criaMenuSuspenso',
@@ -540,7 +540,7 @@ async function iniciaGran() {
                 valorInicial: 'Selecione uma matéria.',
                 opcoes: opcoes,
                 acao: 'editarBlocos',
-                coluna: 'editar',
+                coluna: 'editarPrimeiraLinha',
             },
 
         ]
@@ -571,17 +571,25 @@ async function iniciaGran() {
         //let colunasNumero = Math.max(colunas)
         relatar ('colunas', colunas)
         for (let d of secoesGerenciar){
-            let rc = d?.nome == 'editar' ? 'row' : 'column'
+            //let rc = d?.nome == 'editar' ? 'row' : 'column'
             let coluna = criaDiv({
                 id:'pulaBlocos_divGerenciar_coluna_' + d?.nome,
                 ancestral:'pulaBlocos_divGerenciar_corpo',
                 gap: '4px',
-                rowColumn: rc
+                rowColumn: 'column'
             })
+            if (d?.nome == 'editar'){
+                let colunaEditar = criaDiv({
+                    id:'pulaBlocos_divGerenciar_coluna_editarPrimeiraLinha',
+                    ancestral:'pulaBlocos_divGerenciar_coluna_editar',
+                    gap: '4px',
+                    rowColumn: 'row'
+                })
+            }
             coluna.style.width = (larguraCalculo * d?.peso) + '%'
             coluna.style.maxWidth = '600px'
             for (let m of elementosGerenciar){
-                if (d?.nome == m?.coluna){
+                if (m?.coluna.includes(d?.nome)){
                     let acao = m?.acao
                     let parametros = m?.parametros || []
                     let funcao = m?.tipo
@@ -686,7 +694,8 @@ Direito Constitucional`
             let secao3 = criaDiv({
                 id: 'pulaBlocos_secao3',
                 ancestral: 'pulaBlocos_divGerenciar_coluna_editar',
-                gap: '10px'
+                gap: '10px',
+                rowColumn: 'column'
             })
 
             function chave(tipo, nomeLabel, indice) {
@@ -702,38 +711,44 @@ Direito Constitucional`
                 })
             }
 
+            // Row com 'numeroColunas' divs-coluna dentro, numeradas de 0 a
+            // numeroColunas-1. Cada botão vai pra coluna (indice % numeroColunas).
             function criaGrid(idSufixo) {
-                let grid = criaDiv({ id: 'pulaBlocos_secao3_grid_' + idSufixo, ancestral: secao3.id, gap: '4px', rowColumn: 'row' })
-                grid.style.flexWrap = 'wrap'
-                return grid
+                let row = criaDiv({ id: 'pulaBlocos_secao3_grid_' + idSufixo, ancestral: secao3.id, gap: '8px', rowColumn: 'row' })
+                let colunas = []
+                for (let c = 0; c < numeroColunas; c++) {
+                    let coluna = criaDiv({ id: row.id + '_col' + c, ancestral: row.id, gap: '4px', rowColumn: 'column' })
+                    coluna.style.flex = '1'
+                    coluna.style.minWidth = '0'
+                    colunas.push(coluna)
+                }
+                return colunas
             }
 
             function renderizarTrilha(trilha, nomeLabel, sufixo) {
                 if (trilha.blocos?.length) {
-                    let grid = criaGrid('blocos_' + sufixo)
+                    let colunas = criaGrid('blocos_' + sufixo)
                     trilha.blocos.forEach((bloco, indice) => {
                         let id = 'pulaBlocos_secao3_bloco_' + sufixo + '_' + indice
-                        let linha = criaBotaoComCheckbox({
+                        criaBotaoComCheckbox({
                             id, idCheckbox: id + '_chk',
                             texto: textoFaixa('Bloco', bloco),
-                            ancestral: grid.id, cor: 'primaria',
+                            ancestral: colunas[indice % numeroColunas].id, cor: 'primaria',
                             acao: () => removerUnico('blocos', nomeLabel, indice),
                         })
-                        linha.style.width = (100 / numeroColunas) + '%'
                         ligarSelecao(id + '_chk', chave('blocos', nomeLabel, indice), { tipo: 'blocos', label: nomeLabel, indice })
                     })
                 }
                 if (trilha.excluir?.length) {
-                    let grid = criaGrid('excluir_' + sufixo)
+                    let colunas = criaGrid('excluir_' + sufixo)
                     trilha.excluir.forEach((bloco, indice) => {
                         let id = 'pulaBlocos_secao3_excluir_' + sufixo + '_' + indice
-                        let linha = criaBotaoComCheckbox({
+                        criaBotaoComCheckbox({
                             id, idCheckbox: id + '_chk',
                             texto: textoFaixa('Excluir', bloco),
-                            ancestral: grid.id, cor: 'erro',
+                            ancestral: colunas[indice % numeroColunas].id, cor: 'erro',
                             acao: () => removerUnico('excluir', nomeLabel, indice),
                         })
-                        linha.style.width = (100 / numeroColunas) + '%'
                         ligarSelecao(id + '_chk', chave('excluir', nomeLabel, indice), { tipo: 'excluir', label: nomeLabel, indice })
                     })
                 }
