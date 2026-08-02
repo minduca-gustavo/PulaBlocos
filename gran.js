@@ -403,7 +403,7 @@ async function iniciaGran() {
         }))
         let valorAtualMateria = (dados.atual?.materia || '') + '::' + (dados.atual?.label || '')
 
-        criaMenuSuspenso({
+        let menuMateria = criaMenuSuspenso({
             id: 'pulaBlocos_selecaoMateria',
             ancestral: 'pulaBlocos_div_selecao',
             opcoes: opcoesMateria,
@@ -417,7 +417,8 @@ async function iniciaGran() {
                 await renderizarSelecao()
             },
         })
-
+        //menuMateria.style.minWidth = '200px'
+        menuMateria.style.height = '100%'
         let resolvido = dados.atual ? resolverTrilha(dados, dados.atual) : null
         let unidadesAtual = resolvido ? montarUnidades(resolvido.trilha) : []
         let opcoesBloco = unidadesAtual.map(u => ({
@@ -426,11 +427,11 @@ async function iniciaGran() {
         }))
         let valorAtualBloco = String(resolvido?.trilha?.posicaoAtual ?? (unidadesAtual[0]?.ultimoId ?? ''))
 
-        criaMenuSuspenso({
+        let menuBloco = criaMenuSuspenso({
             id: 'pulaBlocos_selecaoBloco',
             ancestral: 'pulaBlocos_div_selecao',
             opcoes: opcoesBloco,
-            valorInicial: valorAtualBloco,
+            valorInicial: valorAtualBloco || 'Selecione um bloco.',
             acao: async (valor) => {
                 let dadosAtuais = await obterArmazenamento('pulaBlocos')
                 if (typeof dadosAtuais.atual === 'string') dadosAtuais.atual = { materia: dadosAtuais.atual, label: null }
@@ -441,14 +442,17 @@ async function iniciaGran() {
                 await avancar('atuais')
             },
         })
+        //menuBloco.style.minWidth = '200px'
+        menuBloco.style.height = '100%'
 
-        criaBotao({
+        let botaoEstatisticas = criaBotao({
             id: 'pulaBlocos_botaoEstatisticas',
             texto: 'Estatísticas',
             cor: 'secundaria',
             ancestral: 'pulaBlocos_div_selecao',
             acao: abrirPainelEstatisticas,
         })
+        
     }
 
     // Painel flutuante com todas as trilhas (pulaBlocos.ordem — matérias e
@@ -562,8 +566,10 @@ async function iniciaGran() {
     }
 
     async function alteraTipo(url, nome, tipoId){
+        await registrar()
         let dados = await obterArmazenamento('pulaBlocos')
         dados.modo = nome
+        
         await armazenar({ pulaBlocos: dados })
 
         let {idMateria, blocoArray} = await assuntos('atuais')
@@ -847,21 +853,21 @@ async function iniciaGran() {
                     })
                     if (m?.tipo == 'criaInput'){
                         elemento.style.height = '100%'
-                        elemento.value = `Administração Geral
-Administração Pública
-Direito Administrativo
-Fluência de dados
-Raciocínio Lógico
-Direito Previdenciário
-Comércio Internacional
-Língua Portuguesa
-Direito Tributário
-Língua Inglesa
-Estatística
-Auditoria
-Contabilidade Geral
-Economia e Finanças
-Direito Constitucional`
+//                        elemento.value = `Administração Geral
+//Administração Pública
+//Direito Administrativo
+//Fluência de dados
+//Raciocínio Lógico
+//Direito Previdenciário
+//Comércio Internacional
+//Língua Portuguesa
+//Direito Tributário
+//Língua Inglesa
+//Estatística
+//Auditoria
+//Contabilidade Geral
+//Economia e Finanças
+//Direito Constitucional`
                     }
                     if (m?.tipo == 'criaMenuSuspenso') elemento.style.width = '100%'
                 }

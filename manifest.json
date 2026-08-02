@@ -44,7 +44,8 @@
         "elementos.js",
         "tudo.js",
         "gran.js",
-        "teste.js"
+        "teste.js",
+        "contador.js"
       ],
       "run_at": "document_idle"
     }

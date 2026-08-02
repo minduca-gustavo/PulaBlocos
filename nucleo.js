@@ -168,6 +168,7 @@ async function carregarDados(arquivo) {
 
         await armazenar({pulaBlocos : dados})
         alert('Backup restaurado!')
+        iniciaGran()
     } catch (erro) {
         console.error('[Pula Blocos] falha ao importar backup:', erro)
         alert('Arquivo inválido: ' + erro.message)
